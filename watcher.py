@@ -1,4 +1,5 @@
 from watchers.chia_watcher import ChiaWatcher
+from watchers.evm_watcher import EVMWatcher
 from config import Config, NetworkType
 from dotenv import load_dotenv
 import asyncio
@@ -22,6 +23,8 @@ def watch():
     for network in config.networks:
         if network.type == NetworkType.CHIA:
             watchers.append(ChiaWatcher(network))
+        elif network.type == NetworkType.EVM:
+            watchers.append(EVMWatcher(network))
 
     loop = asyncio.get_event_loop()
     for watcher in watchers:

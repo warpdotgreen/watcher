@@ -32,15 +32,17 @@ class ChiaWatcher:
     network_id: str
     rpc_url: str
     portal_launcher_id: bytes32
+    bridging_puzzle_hash: bytes32
     tasks: list
     nodes: List[HTTPFullNodeRpcClient]
 
     def __init__(self, network: Network):
-      self.network_id = network.id
-      self.rpc_url = network.rpc_url
-      self.portal_launcher_id = bytes.fromhex(network.portal_launcher_id)
-      self.tasks = []
-      self.nodes = []
+        self.network_id = network.id
+        self.rpc_url = network.rpc_url
+        self.portal_launcher_id = bytes.fromhex(network.portal_launcher_id)
+        self.bridging_puzzle_hash = bytes.fromhex(network.bridging_puzzle_hash)
+        self.tasks = []
+        self.nodes = []
 
     def getNode(self):
         node = HTTPFullNodeRpcClient(self.rpc_url)
@@ -48,10 +50,12 @@ class ChiaWatcher:
         return node
     
     async def sentMessageWatcher(self):
+        node = self.getNode()
         while True:
             await asyncio.sleep(5)
 
     async def receivedMessageWatcher(self):
+        node = self.getNode()
         while True:
             await asyncio.sleep(5)
 
@@ -68,17 +72,16 @@ class ChiaWatcher:
     def stop(self):
         print(f"Stopping {self.network_id} watcher...")
 
-        for task in self.tasks:
-            task.cancel()
-
-    async def await_stopped(self):
-        await asyncio.gather(*self.tasks)
-
         for node in self.nodes:
             node.close()
 
+    async def await_stopped(self):
         for node in self.nodes:
             await node.await_closed()
+    
+        for task in self.tasks:
+            task.cancel()
+        await asyncio.gather(*self.tasks)
 
         self.tasks = []
         self.nodes = []
