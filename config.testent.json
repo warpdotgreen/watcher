@@ -2,7 +2,7 @@
   "networks": [
     {
       "id": "xch",
-      "type": "coinset",
+      "type": "chia",
       "portal_launcher_id": "9229ce0989917cacd6af54c62b26fa1e56cf7505f61801e04c5b00a7f2c5b138",
       "bridging_puzzle_hash": "a09eb1ea8c6e83c0166801dabcf4a70d361cc7f6d89c4a46bcd400ac57719037"
     },

@@ -6,7 +6,7 @@ import sys
 import os
 
 class NetworkType(enum.Enum):
-    COINSET = "coinset"
+    CHIA = "chia"
     EVM = "evm"
 
 
