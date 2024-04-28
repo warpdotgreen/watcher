@@ -36,7 +36,7 @@ class EVMWatcher:
       return (64 - len(s)) * "0" + s
 
 
-    def syncSentMessageEvents(self, web3, db, contract, nonce: int, start_height: int) -> Tuple[int, int] | None: # new nonce, new start height
+    async def syncSentMessageEvents(self, web3, db, contract, nonce: int, start_height: int) -> Tuple[int, int] | None: # new nonce, new start height
         query_start_height = start_height
         query_end_height = query_start_height + self.max_block_range - 1
 
@@ -49,7 +49,13 @@ class EVMWatcher:
                 query_end_height = current_block_height
                 time_to_stop = True
 
-            if not time_to_stop:
+            if query_start_height > query_end_height:
+                query_start_height = query_end_height
+                break
+
+            if time_to_stop:
+                self.log(f"Querying blocks {query_start_height}-{query_end_height} for {self.network_id}-{nonce}")
+            else:
                 self.log(f"Long query for {self.network_id}-{nonce} from {query_start_height} to {query_end_height} (normal if catching up)")
 
             logs = contract.events.MessageSent().get_logs(
@@ -65,11 +71,11 @@ class EVMWatcher:
             query_start_height = query_end_height
             query_end_height = query_start_height + self.max_block_range - 1
       
-        # query_start_height will be the last used query_end_height
-        new_min_height = query_start_height - self.max_block_range * 2 // 3
+        new_min_height = query_start_height
 
         if len(logs) == 0:
-            return None
+            await asyncio.sleep(60)
+            return nonce, new_min_height - self.max_block_range * 2 // 3
       
         event = logs[0]
         new_message = Message(
@@ -93,12 +99,13 @@ class EVMWatcher:
             Message.source_chain == new_message.source_chain
         )).first()
         if existing_message is None:
+            self.log(f"Adding message {self.network_id}-{nonce} to the database...")
             db.add(new_message)
             db.commit()
         else:
             self.log(f"Message {self.network_id}-{nonce} already exists in the database")
 
-        return nonce + 1, new_min_height
+        return nonce + 1, event.blockNumber - 1
 
 
     async def sentMessageWatcher(self):
@@ -116,13 +123,7 @@ class EVMWatcher:
 
         while True:
             self.log(f"Checking for sent message with id {next_nonce}...")
-            resp = self.syncSentMessageEvents(web3, db, portal, next_nonce, start_height)
-
-            if resp is None:
-                await asyncio.sleep(60)
-                continue 
-
-            next_nonce, start_height = resp
+            next_nonce, start_height = await self.syncSentMessageEvents(web3, db, portal, next_nonce, start_height)
 
 
     async def syncReceivedMessageEvents(self, web3, db, contract, start_height: int) -> int | None: # new start height
@@ -137,7 +138,13 @@ class EVMWatcher:
                 query_end_height = current_block_height
                 time_to_stop = True
 
-            if not time_to_stop:
+            if query_start_height > query_end_height:
+                query_start_height = query_end_height
+                break
+
+            if time_to_stop:
+                self.log(f"Querying blocks {query_start_height}-{query_end_height} (ReceivedMessage)")
+            else:
                 self.log(f"Long query for {self.network_id} from {query_start_height} to {query_end_height} (normal if catching up)")
 
             logs = contract.events.MessageReceived().get_logs(
@@ -152,11 +159,11 @@ class EVMWatcher:
             query_start_height = query_end_height
             query_end_height = query_start_height + self.max_block_range - 1
       
-        # query_start_height will be the last used query_end_height
-        new_min_height = query_start_height
+        new_min_height = query_start_height 
 
         if len(logs) == 0:
-            return None
+            await asyncio.sleep(60)
+            return query_end_height - self.max_block_range * 2 // 3
       
         for event in logs:
             message_nonce = event.args.nonce
@@ -178,16 +185,17 @@ class EVMWatcher:
                 )).first()
                 await asyncio.sleep(5)
 
+            new_min_height = max(new_min_height, event.blockNumber + 1)
+
             if msg.status == MessageStatus.RECEIVED:
                 self.log(f"Message {event.args.source_chain.decode()}-{message_nonce.hex()} already marked as 'RECEIVED' in the database.")
                 continue
 
+            self.log(f"Marking message {event.args.source_chain.decode()}-{message_nonce.hex()} as 'RECEIVED' in the database.")
             msg.status = MessageStatus.RECEIVED
             msg.destination_block_number = event.blockNumber
             msg.destination_timestamp = web3.eth.get_block(event.blockNumber).timestamp
             db.commit()
-
-            new_min_height = max(new_min_height, event.blockNumber + 1)
 
         return new_min_height
     
@@ -199,21 +207,15 @@ class EVMWatcher:
         latest_message_in_db: Message | None = db.query(Message).filter(and_(
             Message.destination_chain == self.network_id.encode(),
             Message.destination_block_number != None
-        )).order_by(Message.nonce.desc()).first()
+        )).order_by(Message.destination_block_number.desc()).first()
 
-        start_height: int = latest_message_in_db.destination_block_number - 1 if latest_message_in_db is not None else self.min_height
+        start_height: int = latest_message_in_db.destination_block_number + 1 if latest_message_in_db is not None else self.min_height
 
         portal = web3.eth.contract(address=self.portal_address, abi=PORTAL_EVENTS_ABI)
 
         while True:
             self.log(f"Checking for received message from height {start_height}...")
-            resp = await self.syncReceivedMessageEvents(web3, db, portal, start_height)
-
-            if resp is None:
-                await asyncio.sleep(60)
-                continue 
-
-            start_height = resp
+            start_height = await self.syncReceivedMessageEvents(web3, db, portal, start_height)
 
 
     def start(self, loop):

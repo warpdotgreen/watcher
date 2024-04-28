@@ -156,6 +156,8 @@ class ChiaWatcher:
                         except Exception as e:
                             self.log(f"ERROR - Coin {self.network_id}-{coin.name().hex()} - error when parsing memo to create message; skipping even though we shouldn't")
                             print(e)
+                    else:
+                        self.log(f"Coin {self.network_id}-{coin_record.coin.name().hex()}: toll not high enough; skipping")
         except Exception:
             self.log(f"ERROR - Coin {self.network_id}-{coin_record.coin.name().hex()} - error when parsing output; skipping")
 
@@ -182,12 +184,12 @@ class ChiaWatcher:
             if last_synced_height is None:
                 last_synced_height = self.min_height
             else:
-                last_synced_height = last_synced_height[0]
+                last_synced_height = last_synced_height[0] + 1
 
             unfiltered_coin_records = await node.get_coin_records_by_puzzle_hash(
                 self.bridging_puzzle_hash,
                 include_spent_coins=True,
-                start_height=last_synced_height - 1
+                start_height=last_synced_height
             )
             if unfiltered_coin_records is None:
                 self.log("No new coin records; checking again in 30s...")
@@ -198,6 +200,7 @@ class ChiaWatcher:
             # instead of only one and calling again
             skip_coin_ids = []
             reorg = False
+
             while not reorg:
                 earliest_unprocessed_coin_record = None
                 for coin_record in unfiltered_coin_records:
@@ -206,6 +209,7 @@ class ChiaWatcher:
                         continue
 
                     if coin_record.coin.amount < self.message_toll:
+                        self.log(f"Skipping nonce {nonce.hex()} because toll is not high enough")
                         skip_coin_ids.append(nonce)
                         continue
 
@@ -214,6 +218,7 @@ class ChiaWatcher:
                         Message.source_chain == self.network_id.encode()
                     )).first()
                     if message_in_db is not None:
+                        self.log(f"Nonce {nonce.hex()} already in db; skipping")
                         skip_coin_ids.append(nonce)
                         continue
 
@@ -225,8 +230,9 @@ class ChiaWatcher:
 
                 # wait for this to actually be confirmed :)
                 # 4 blocks for explorer
-                while earliest_unprocessed_coin_record.confirmed_block_index + 4 > (await self.get_current_height(node)):
-                    await asyncio.sleep(5)
+                while earliest_unprocessed_coin_record.confirmed_block_index + 3 > (await self.get_current_height(node)):
+                    self.log(f"Coin {self.network_id}-0x{earliest_unprocessed_coin_record.coin.name().hex()}: does not yet have 3 confs; retrying in 15s...")
+                    await asyncio.sleep(15)
 
                 coin_record_copy = await node.get_coin_record_by_name(earliest_unprocessed_coin_record.coin.name())
                 if coin_record_copy is None or coin_record_copy.confirmed_block_index != earliest_unprocessed_coin_record.confirmed_block_index:
@@ -234,8 +240,11 @@ class ChiaWatcher:
                     reorg = True
                     break
 
+                self.log(f"Processing coin record for nonce {earliest_unprocessed_coin_record.coin.name().hex()}...")
                 await self.processCoinRecord(db, node, earliest_unprocessed_coin_record)
 
+                nonce = earliest_unprocessed_coin_record.coin.name()
+                self.log(f"Marking {nonce.hex()} as processed")
                 skip_coin_ids.append(nonce)
 
             if not reorg:
@@ -320,9 +329,11 @@ class ChiaWatcher:
                     Message.destination_chain == self.network_id.encode()
                 )).first()
             
+            self.log(f"Updating status of message {source_chain.decode()}-{nonce.hex()} to 'RECEIVED'")
             msg.destination_block_number = coin_record.spent_block_index
             msg.destination_timestamp = coin_record.timestamp
             msg.status = MessageStatus.RECEIVED
+            db.commit()
        
         new_singleton = Coin(
             last_synced_portal.coin_id,
