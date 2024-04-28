@@ -207,9 +207,9 @@ class EVMWatcher:
     def start(self, loop):
         self.log(f"Starting...")
 
-        #   self.tasks.append(
-        #       loop.create_task(self.sentMessageWatcher())
-        #   )
+        self.tasks.append(
+            loop.create_task(self.sentMessageWatcher())
+        )
         self.tasks.append(
             loop.create_task(self.receivedMessageWatcher())
         )

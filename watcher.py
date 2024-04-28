@@ -24,7 +24,8 @@ def watch():
         if network.type == NetworkType.CHIA:
             watchers.append(ChiaWatcher(network))
         elif network.type == NetworkType.EVM:
-            watchers.append(EVMWatcher(network))
+            # watchers.append(EVMWatcher(network))
+            pass
 
     loop = asyncio.get_event_loop()
     for watcher in watchers:

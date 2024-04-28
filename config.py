@@ -16,9 +16,14 @@ class Network:
     type: NetworkType
     rpc_url: str
     min_height: int
-    max_block_range: Optional[int] = None
+
+    # Chia
+    message_toll: Optional[int] = None
     portal_launcher_id: Optional[str] = None
     bridging_puzzle_hash: Optional[str] = None
+
+    # EVM
+    max_block_range: Optional[int] = None
     portal_address: Optional[str] = None
 
 
@@ -51,9 +56,10 @@ class Config:
                 type=NetworkType(net['type']),
                 rpc_url=rpc_url,
                 min_height=net['min_height'],
-                max_block_range=net.get('max_block_range'),
+                message_toll=net.get('message_toll'),
                 portal_launcher_id=net.get('portal_launcher_id'),
                 bridging_puzzle_hash=net.get('bridging_puzzle_hash'),
+                max_block_range=net.get('max_block_range'),
                 portal_address=net.get('portal_address')
             )
             config.networks.append(network)
