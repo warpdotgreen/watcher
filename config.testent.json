@@ -3,18 +3,23 @@
     {
       "id": "xch",
       "type": "chia",
+      "min_height": 515000,
       "portal_launcher_id": "9229ce0989917cacd6af54c62b26fa1e56cf7505f61801e04c5b00a7f2c5b138",
       "bridging_puzzle_hash": "a09eb1ea8c6e83c0166801dabcf4a70d361cc7f6d89c4a46bcd400ac57719037"
     },
     {
-      "id": "bse",
-      "type": "evm",
-      "portal_address": "0x9eeD3bdA5Dac7Eb4E7648e823e0C182536E1f260" 
-    },
-    {
       "id": "eth",
       "type": "evm",
+      "min_height": 5744830,
+      "max_block_range": 10000,
       "portal_address": "0x67e99b36a37d7794180180c5b31F7cb97b019798"
+    },
+    {
+      "id": "bse",
+      "type": "evm",
+      "min_height": 8960653,
+      "max_block_range": 1000,
+      "portal_address": "0x9eeD3bdA5Dac7Eb4E7648e823e0C182536E1f260" 
     }
   ]
 }

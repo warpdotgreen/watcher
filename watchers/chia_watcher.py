@@ -33,12 +33,14 @@ class ChiaWatcher:
     rpc_url: str
     portal_launcher_id: bytes32
     bridging_puzzle_hash: bytes32
+    min_height: int
     tasks: list
     nodes: List[HTTPFullNodeRpcClient]
 
     def __init__(self, network: Network):
         self.network_id = network.id
         self.rpc_url = network.rpc_url
+        self.min_height = network.min_height
         self.portal_launcher_id = bytes.fromhex(network.portal_launcher_id)
         self.bridging_puzzle_hash = bytes.fromhex(network.bridging_puzzle_hash)
         self.tasks = []
