@@ -44,6 +44,9 @@ class ChiaWatcher:
         self.tasks = []
         self.nodes = []
 
+    def log(self, message):
+        print(f"[{self.network_id} watcher] {message}")
+
     def getNode(self):
         node = HTTPFullNodeRpcClient(self.rpc_url)
         self.nodes.append(node)
@@ -60,7 +63,7 @@ class ChiaWatcher:
             await asyncio.sleep(5)
 
     def start(self, loop):
-      print(f"Starting {self.network_id} watcher...")
+      self.log("Starting...")
 
       self.tasks.append(
           loop.create_task(self.sentMessageWatcher())
@@ -70,7 +73,7 @@ class ChiaWatcher:
       )
 
     def stop(self):
-        print(f"Stopping {self.network_id} watcher...")
+        self.log(f"Stopping...")
 
         for node in self.nodes:
             node.close()

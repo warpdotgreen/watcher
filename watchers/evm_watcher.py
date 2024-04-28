@@ -2,6 +2,7 @@ import asyncio
 from config import Network
 from typing import List
 from web3 import Web3
+from db import setup_database
 
 class EVMWatcher:
     network_id: str
@@ -18,18 +19,28 @@ class EVMWatcher:
     def getWeb3(self):
         return Web3(Web3.HTTPProvider(self.rpc_url))
     
+    def getDb(self):
+        return setup_database()
+    
+    def log(self, message):
+        print(f"[{self.network_id} watcher] {message}")
+    
     async def sentMessageWatcher(self):
         web3 = self.getWeb3()
+        db = self.getDb()
+
         while True:
             await asyncio.sleep(5)
 
     async def receivedMessageWatcher(self):
         web3 = self.getWeb3()
+        db = self.getDb()
+        
         while True:
             await asyncio.sleep(5)
 
     def start(self, loop):
-      print(f"Starting {self.network_id} watcher...")
+      self.log(f"Starting...")
 
       self.tasks.append(
           loop.create_task(self.sentMessageWatcher())
@@ -39,7 +50,7 @@ class EVMWatcher:
       )
 
     def stop(self):
-        print(f"Stopping {self.network_id} watcher...")
+        self.log(f"Stopping...")
 
         for task in self.tasks:
             task.cancel()
