@@ -110,8 +110,10 @@ class ChiaWatcher:
             destination_chain=destination_chain,
             destination=destination,
             contents=join_message_contents(contents),
-            block_number=created_height,
-            timestamp = created_timestamp,
+            source_block_number=created_height,
+            source_timestamp = created_timestamp,
+            destination_block_number = None,
+            destination_timestamp = None,
             transaction_hash = nonce,
             status = MessageStatus.SENT
         )
@@ -173,9 +175,9 @@ class ChiaWatcher:
         db = self.getDb()
 
         while True:
-            last_synced_height = db.query(Message.block_number).filter(
+            last_synced_height = db.query(Message.source_block_number).filter(
                 Message.source_chain == self.network_id.encode()
-            ).order_by(Message.block_number.desc()).first()
+            ).order_by(Message.source_block_number.desc()).first()
 
             if last_synced_height is None:
                 last_synced_height = self.min_height
@@ -247,6 +249,18 @@ class ChiaWatcher:
         last_synced_portal: ChiaPortalState
     ) -> ChiaPortalState:
         coin_record = await node.get_coin_record_by_name(last_synced_portal.coin_id)
+        if coin_record is None:
+            for i in range(6):
+                logging.info(f"Coin {self.network_id}-0x{last_synced_portal.coin_id.hex()}: not found; will remove from db if not found in {6-i} tries")
+                coin_record = await node.get_coin_record_by_name(last_synced_portal.coin_id)
+                await asyncio.sleep(10)
+
+            db.delete(last_synced_portal)
+            new_last_synced_portal = db.query(ChiaPortalState).filter(
+                ChiaPortalState.chain_id == self.network_id.encode()
+            ).order_by(ChiaPortalState.height.desc()).first()
+            return new_last_synced_portal
+
         if coin_record.spent_block_index == 0:
             parent_coin_record = await node.get_coin_record_by_name(last_synced_portal.parent_id)
             if parent_coin_record.spent_block_index == 0:
@@ -265,6 +279,9 @@ class ChiaWatcher:
         self.log("Parsing new portal coin spend")
         # spent!
         spend = await node.get_puzzle_and_solution(last_synced_portal.coin_id, coin_record.spent_block_index)
+        while spend is None:
+            spend = await node.get_puzzle_and_solution(last_synced_portal.coin_id, coin_record.spent_block_index)
+            
         conds = conditions_dict_for_solution(spend.puzzle_reveal, spend.solution, INFINITE_COST)
         create_coins = conds[ConditionOpcode.CREATE_COIN]
         new_ph = None
@@ -302,7 +319,9 @@ class ChiaWatcher:
                     Message.nonce == nonce,
                     Message.destination_chain == self.network_id.encode()
                 )).first()
-                
+            
+            msg.destination_block_number = coin_record.spent_block_index
+            msg.destination_timestamp = coin_record.timestamp
             msg.status = MessageStatus.RECEIVED
        
         new_singleton = Coin(

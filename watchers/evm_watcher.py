@@ -79,8 +79,10 @@ class EVMWatcher:
             destination_chain=event.args.destination_chain,
             destination=event.args.destination,
             contents=join_message_contents(event.args.contents),
-            block_number=event.blockNumber,
-            timestamp=web3.eth.get_block(event.blockNumber).timestamp,
+            source_block_number=event.blockNumber,
+            source_timestamp=web3.eth.get_block(event.blockNumber).timestamp,
+            destination_block_number=None,
+            destination_timestamp=None,
             transaction_hash=event.transactionHash,
             status=MessageStatus.SENT
         )
@@ -103,12 +105,12 @@ class EVMWatcher:
         web3 = self.getWeb3()
         db = self.getDb()
 
-        latest_message_in_db = db.query(Message).filter(
+        latest_message_in_db: Message | None = db.query(Message).filter(
             Message.source_chain == self.network_id.encode()
         ).order_by(Message.nonce.desc()).first()
 
         next_nonce: int = int(latest_message_in_db.nonce.hex(), 16) + 1 if latest_message_in_db is not None else 1
-        start_height: int = latest_message_in_db.block_number - 1 if latest_message_in_db is not None else self.min_height
+        start_height: int = latest_message_in_db.source_block_number - 1 if latest_message_in_db is not None else self.min_height
 
         portal = web3.eth.contract(address=self.portal_address, abi=PORTAL_EVENTS_ABI)
 
@@ -176,8 +178,16 @@ class EVMWatcher:
                 )).first()
                 await asyncio.sleep(5)
 
+            if msg.status == MessageStatus.RECEIVED:
+                self.log(f"Message {event.args.source_chain.decode()}-{message_nonce.hex()} already marked as 'RECEIVED' in the database.")
+                continue
+
             msg.status = MessageStatus.RECEIVED
+            msg.destination_block_number = event.blockNumber
+            msg.destination_timestamp = web3.eth.get_block(event.blockNumber).timestamp
             db.commit()
+
+            new_min_height = max(new_min_height, event.blockNumber + 1)
 
         return new_min_height
     
@@ -186,11 +196,12 @@ class EVMWatcher:
         web3 = self.getWeb3()
         db = self.getDb()
 
-        latest_message_in_db = db.query(Message).filter(
-            Message.destination_chain == self.network_id.encode()
-        ).order_by(Message.nonce.desc()).first()
+        latest_message_in_db: Message | None = db.query(Message).filter(and_(
+            Message.destination_chain == self.network_id.encode(),
+            Message.destination_block_number != None
+        )).order_by(Message.nonce.desc()).first()
 
-        start_height: int = latest_message_in_db.block_number - 1 if latest_message_in_db is not None else self.min_height
+        start_height: int = latest_message_in_db.destination_block_number - 1 if latest_message_in_db is not None else self.min_height
 
         portal = web3.eth.contract(address=self.portal_address, abi=PORTAL_EVENTS_ABI)
 
