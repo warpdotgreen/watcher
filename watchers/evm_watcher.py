@@ -71,11 +71,9 @@ class EVMWatcher:
             query_start_height = query_end_height
             query_end_height = query_start_height + self.max_block_range - 1
       
-        new_min_height = query_start_height
-
         if len(logs) == 0:
             await asyncio.sleep(60)
-            return nonce, new_min_height - self.max_block_range * 2 // 3
+            return nonce, query_end_height - self.max_block_range * 2 // 3
       
         event = logs[0]
         new_message = Message(
