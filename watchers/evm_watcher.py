@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from web3 import Web3
 from typing import Tuple
 from config import Network
@@ -28,7 +29,7 @@ class EVMWatcher:
         return setup_database()
     
     def log(self, message):
-        print(f"[{self.network_id} watcher] {message}")
+        logging.info(f"[{self.network_id} watcher] - {message}")
     
     def nonceIntToBytes(self, nonceInt: int) -> bytes:
       s = hex(nonceInt)[2:]

@@ -1,5 +1,6 @@
 import asyncio
 import aiohttp
+import logging
 from typing import List
 from config import Network
 from sqlalchemy import and_
@@ -12,7 +13,7 @@ from chia.rpc.full_node_rpc_client import FullNodeRpcClient
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.blockchain_format.program import INFINITE_COST
 from chia.util.condition_tools import conditions_dict_for_solution
-from db import join_message_contents, Message, MessageStatus, setup_database
+from db import join_message_contents, Message, MessageStatus, setup_database, ChiaPortalState
 
 class HTTPFullNodeRpcClient(FullNodeRpcClient):
     def __init__(self, base_url: str):
@@ -58,7 +59,7 @@ class ChiaWatcher:
         self.nodes = []
 
     def log(self, message):
-        print(f"[{self.network_id} watcher] {message}")
+        logging.info(f"[{self.network_id} watcher] - {message}")
 
     def getNode(self):
         node = HTTPFullNodeRpcClient(self.rpc_url)
@@ -239,11 +240,130 @@ class ChiaWatcher:
                 self.log("Processed all coin records; checking again in 30s...")
                 await asyncio.sleep(30)
 
+    async def syncPortal(
+        self,
+        db,
+        node: FullNodeRpcClient,
+        last_synced_portal: ChiaPortalState
+    ) -> ChiaPortalState:
+        coin_record = await node.get_coin_record_by_name(last_synced_portal.coin_id)
+        if coin_record.spent_block_index == 0:
+            parent_coin_record = await node.get_coin_record_by_name(last_synced_portal.parent_id)
+            if parent_coin_record.spent_block_index == 0:
+                self.log(f"Portal coin {self.network_id}-0x{last_synced_portal.coin_id.hex()}: parent is unspent; reverting.")
+                parent_state = db.query(ChiaPortalState).filter(
+                    ChiaPortalState.coin_id == last_synced_portal.parent_id
+                ).first()
+                db.delete(last_synced_portal)
+                db.commit()
+                return parent_state
             
+            self.log("Portal coin state is up to date.")
+            await asyncio.sleep(10)
+            return last_synced_portal
+
+        self.log("Parsing new portal coin spend")
+        # spent!
+        spend = await node.get_puzzle_and_solution(last_synced_portal.coin_id, coin_record.spent_block_index)
+        conds = conditions_dict_for_solution(spend.puzzle_reveal, spend.solution, INFINITE_COST)
+        create_coins = conds[ConditionOpcode.CREATE_COIN]
+        new_ph = None
+        for cond in create_coins:
+            if cond.vars[1] == b'\x01':
+                new_ph = cond.vars[0]
+                break
+        if new_ph is None:
+            self.log(f"Portal coin {self.network_id}-0x{last_synced_portal.coin_id.hex()}: no singleton found in spend; reverting.")
+            parent_state = db.query(ChiaPortalState).filter(
+                ChiaPortalState.coin_id == last_synced_portal.parent_id
+            ).first()
+            db.delete(last_synced_portal)
+            db.commit()
+            return parent_state
+
+        inner_solution: Program = Program.from_bytes(bytes(spend.solution)).at("rrf")
+        update_package = inner_solution.at("f")
+
+        chains_and_nonces = inner_solution.at("rf").as_iter() if bytes(update_package) == bytes(Program.to(0)) else []
+        for cn in chains_and_nonces:
+            source_chain = cn.first().as_atom()
+            nonce = cn.rest().as_atom()
+
+            msg = db.query(Message).filter(and_(
+                Message.source_chain == source_chain,
+                Message.nonce == nonce,
+                Message.destination_chain == self.network_id.encode()
+            )).first()
+            while msg is None:
+                self.log(f"Message {source_chain.decode()}-{nonce.hex()} not found in db; waiting 10s for other threads to catch up")
+                await asyncio.sleep(10)
+                msg = db.query(Message).filter(and_(
+                    Message.source_chain == source_chain,
+                    Message.nonce == nonce,
+                    Message.destination_chain == self.network_id.encode()
+                )).first()
+                
+            msg.status = MessageStatus.RECEIVED
+       
+        new_singleton = Coin(
+            last_synced_portal.coin_id,
+            new_ph,
+            1
+        )
+
+        new_synced_portal = ChiaPortalState(
+            chain_id=self.network_id.encode(),
+            coin_id=new_singleton.name(),
+            parent_id=new_singleton.parent_coin_info,
+            height=coin_record.spent_block_index,
+        )
+        db.add(new_synced_portal)
+        db.commit()
+
+        self.log(f"New portal coin: {self.network_id}-0x{new_synced_portal.coin_id.hex()}")
+
+        return new_synced_portal
+
+
     async def receivedMessageWatcher(self):
         node = self.getNode()
+        db = self.getDb()
+
+        last_synced_portal = db.query(ChiaPortalState).filter(
+            ChiaPortalState.chain_id == self.network_id.encode()
+        ).order_by(ChiaPortalState.height.desc()).first()
+
+        if last_synced_portal is None:
+            self.log("No last synced portal found, using launcher...")
+            launcher_coin_record = await node.get_coin_record_by_name(self.portal_launcher_id)
+            assert launcher_coin_record.spent_block_index > 0
+
+            launcher_spend = await node.get_puzzle_and_solution(self.portal_launcher_id, launcher_coin_record.spent_block_index)
+            conds = conditions_dict_for_solution(launcher_spend.puzzle_reveal, launcher_spend.solution, INFINITE_COST)
+            create_coins = conds[ConditionOpcode.CREATE_COIN]
+            assert len(create_coins) == 1 and create_coins[0].vars[1] == b'\x01'
+
+            singleton_full_puzzle_hash = create_coins[0].vars[0]
+            first_singleton = Coin(
+                self.portal_launcher_id,
+                singleton_full_puzzle_hash,
+                1
+            )
+
+            last_synced_portal = ChiaPortalState(
+                chain_id=self.network_id.encode(),
+                coin_id=first_singleton.name(),
+                parent_id=self.portal_launcher_id,
+                height=launcher_coin_record.spent_block_index,
+            )
+            db.add(last_synced_portal)
+            db.commit()
+
+        self.log(f"Latest portal coin: {self.network_id}-0x{last_synced_portal.coin_id.hex()}")
+
         while True:
-            await asyncio.sleep(5)
+            last_synced_portal = await self.syncPortal(db, node, last_synced_portal)
+
 
     def start(self, loop):
       self.log("Starting...")
@@ -255,11 +375,13 @@ class ChiaWatcher:
           loop.create_task(self.receivedMessageWatcher())
       )
 
+
     def stop(self):
         self.log(f"Stopping...")
 
         for node in self.nodes:
             node.close()
+
 
     async def await_stopped(self):
         for node in self.nodes:

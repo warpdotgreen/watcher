@@ -40,8 +40,10 @@ class Message(Base):
     destination_chain = Column(BLOB(3))
     destination = Column(BLOB)
     contents = Column(BLOB)
-    block_number = Column(Integer)
-    timestamp = Column(Integer)
+    source_block_number = Column(Integer)
+    source_timestamp = Column(Integer)
+    destination_block_number = Column(Integer, nullable=True)
+    destination_timestamp = Column(Integer, nullable=True)
     transaction_hash = Column(BLOB(32))
     status = Column(EnumType(MessageStatus))
 
@@ -50,6 +52,7 @@ class ChiaPortalState(Base):
     chain_id = Column(BLOB(3), primary_key=True)
     coin_id = Column(BLOB(32), primary_key=True)
     parent_id = Column(BLOB(32))
+    height = Column(Integer)
 
 class KeyValueEntry(Base):
     __tablename__ = 'kv_store'

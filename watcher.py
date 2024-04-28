@@ -3,6 +3,9 @@ from watchers.evm_watcher import EVMWatcher
 from config import Config, NetworkType
 from dotenv import load_dotenv
 import asyncio
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 async def close_watchers(watchers):
     for watcher in watchers:
@@ -24,8 +27,7 @@ def watch():
         if network.type == NetworkType.CHIA:
             watchers.append(ChiaWatcher(network))
         elif network.type == NetworkType.EVM:
-            # watchers.append(EVMWatcher(network))
-            pass
+            watchers.append(EVMWatcher(network))
 
     loop = asyncio.get_event_loop()
     for watcher in watchers:
@@ -34,12 +36,12 @@ def watch():
     try:
       loop.run_forever()
     except KeyboardInterrupt:
-      print("Stopping watchers...")
+      logging.info("[root] - Stopping watchers...")
 
       loop.run_until_complete(close_watchers(watchers))
     finally:
       loop.close()
-
+      logging.info("[root] - Done.")
 
 if __name__ == "__main__":
     watch()
