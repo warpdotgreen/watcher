@@ -7,6 +7,7 @@ import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+
 async def close_watchers(watchers):
     for watcher in watchers:
         watcher.stop()
@@ -16,6 +17,7 @@ async def close_watchers(watchers):
           await watcher.await_stopped()
         except asyncio.CancelledError:
            pass
+
 
 def watch():
     load_dotenv()
@@ -30,10 +32,11 @@ def watch():
             watchers.append(EVMWatcher(network))
 
     loop = asyncio.get_event_loop()
-    for watcher in watchers:
-        watcher.start(loop)
     
     try:
+      for watcher in watchers:
+          watcher.start(loop)
+
       loop.run_forever()
     except KeyboardInterrupt:
       logging.info("[root] - Stopping watchers...")

@@ -112,9 +112,10 @@ class ChiaWatcher:
             contents=join_message_contents(contents),
             source_block_number=created_height,
             source_timestamp = created_timestamp,
+            source_transaction_hash = nonce,
             destination_block_number = None,
             destination_timestamp = None,
-            transaction_hash = nonce,
+            destination_transaction_hash = None,
             status = MessageStatus.SENT
         )
         db.add(msg)
@@ -332,6 +333,7 @@ class ChiaWatcher:
             self.log(f"Updating status of message {source_chain.decode()}-{nonce.hex()} to 'RECEIVED'")
             msg.destination_block_number = coin_record.spent_block_index
             msg.destination_timestamp = coin_record.timestamp
+            msg.destination_transaction_hash = coin_record.coin.name()
             msg.status = MessageStatus.RECEIVED
             db.commit()
        

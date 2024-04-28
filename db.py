@@ -42,9 +42,10 @@ class Message(Base):
     contents = Column(BLOB)
     source_block_number = Column(Integer)
     source_timestamp = Column(Integer)
+    source_transaction_hash = Column(BLOB(32))
     destination_block_number = Column(Integer, nullable=True)
     destination_timestamp = Column(Integer, nullable=True)
-    transaction_hash = Column(BLOB(32))
+    destination_transaction_hash = Column(BLOB(32), nullable=True)
     status = Column(EnumType(MessageStatus))
 
 class ChiaPortalState(Base):

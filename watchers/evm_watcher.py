@@ -85,9 +85,10 @@ class EVMWatcher:
             contents=join_message_contents(event.args.contents),
             source_block_number=event.blockNumber,
             source_timestamp=web3.eth.get_block(event.blockNumber).timestamp,
+            source_transaction_hash=event.transactionHash,
             destination_block_number=None,
             destination_timestamp=None,
-            transaction_hash=event.transactionHash,
+            destination_transaction_hash=None,
             status=MessageStatus.SENT
         )
 
@@ -193,6 +194,7 @@ class EVMWatcher:
             msg.status = MessageStatus.RECEIVED
             msg.destination_block_number = event.blockNumber
             msg.destination_timestamp = web3.eth.get_block(event.blockNumber).timestamp
+            msg.destination_transaction_hash = event.transactionHash
             db.commit()
 
         return new_min_height
