@@ -13,11 +13,11 @@ app = FastAPI()
 @app.get("/stats")
 async def read_stats():
     db: Session = setup_database()
-    total_messages = db.query(Message).count()
+    # total_messages = db.query(Message).count()
     messages_to_chia = db.query(Message).filter(Message.destination_chain == b'xch').count()
     messages_from_chia = db.query(Message).filter(Message.source_chain == b'xch').count()
     resp = {
-        "total_messages": total_messages,
+        "total_messages": messages_from_chia + messages_to_chia,
         "messages_to_chia": messages_to_chia,
         "messages_from_chia": messages_from_chia,
     }
