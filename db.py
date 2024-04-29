@@ -1,9 +1,9 @@
 from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import update, select, insert
 from sqlalchemy.dialects.sqlite import BLOB
 from sqlalchemy.types import TypeDecorator
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import update
 from typing import List
 import enum
 
@@ -72,6 +72,12 @@ def setup_database(db_path='sqlite:///data.db'):
 # session = setup_database()
 
 def increment_key_value(db, key, amount):
+    existing = db.execute(select(KeyValueEntry).where(KeyValueEntry.key == key)).scalar()
+    
+    if not existing:
+        db.execute(insert(KeyValueEntry).values(key=key, value_int=0))
+        db.commit()
+
     db.execute(
         update(KeyValueEntry).
         where(KeyValueEntry.key == key).

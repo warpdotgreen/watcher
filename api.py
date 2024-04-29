@@ -1,4 +1,4 @@
-from db import Message, setup_database, split_message_contents
+from db import Message, setup_database, split_message_contents, KeyValueEntry
 from hypercorn.config import Config as HyperConfig
 from fastapi import FastAPI, HTTPException, Query
 from starlette.responses import JSONResponse
@@ -16,11 +16,17 @@ async def read_stats():
     total_messages = db.query(Message).count()
     messages_to_chia = db.query(Message).filter(Message.destination_chain == b'xch').count()
     messages_from_chia = db.query(Message).filter(Message.source_chain == b'xch').count()
-    return {
+    resp = {
         "total_messages": total_messages,
         "messages_to_chia": messages_to_chia,
-        "messages_from_chia": messages_from_chia
+        "messages_from_chia": messages_from_chia,
     }
+
+    kvs = db.query(KeyValueEntry).all()
+    for kv in kvs:
+        resp[kv.key] = kv.value_int
+
+    return resp
 
 
 @app.get("/messages")
