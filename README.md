@@ -15,7 +15,7 @@ pip install --extra-index-url https://pypi.chia.net/simple/ chia-blockchain==2.2
 pip install python-dotenv==1.0.1
 pip install web3==6.17.2
 pip install fastapi==0.110.2
-pip installhypercorn==0.16.0
+pip install hypercorn==0.16.0
 ```
 
 Run watcher:
