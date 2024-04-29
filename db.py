@@ -3,6 +3,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.sqlite import BLOB
 from sqlalchemy.types import TypeDecorator
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import update
 from typing import List
 import enum
 
@@ -47,6 +48,7 @@ class Message(Base):
     destination_timestamp = Column(Integer, nullable=True)
     destination_transaction_hash = Column(BLOB(32), nullable=True)
     status = Column(EnumType(MessageStatus))
+    parsed = Column(String)
 
 class ChiaPortalState(Base):
     __tablename__ = 'xch_portal_states'
@@ -58,7 +60,7 @@ class ChiaPortalState(Base):
 class KeyValueEntry(Base):
     __tablename__ = 'kv_store'
     key = Column(String, primary_key=True)
-    value = Column(String)
+    value_int = Column(Integer, default=0)
 
 def setup_database(db_path='sqlite:///data.db'):
     engine = create_engine(db_path, echo=False)
@@ -68,3 +70,11 @@ def setup_database(db_path='sqlite:///data.db'):
 
 # Call setup_database() to initialize database
 # session = setup_database()
+
+def increment_key_value(db, key, amount):
+    db.execute(
+        update(KeyValueEntry).
+        where(KeyValueEntry.key == key).
+        values(value_int=KeyValueEntry.value_int + amount)
+    )
+    db.commit()
