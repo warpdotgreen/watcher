@@ -22,5 +22,56 @@
       "max_block_range": 1000,
       "portal_address": "0x9eeD3bdA5Dac7Eb4E7648e823e0C182536E1f260" 
     }
+  ],
+  "parsers": [
+    {
+      "id": "eth_erc20bridge",
+      "type": "erc20bridge",
+      "chains": ["eth", "xch"],
+      "contract_address": "0x1bB5a805b2C9be93b71b80F50bB066A11cB2B3d6",
+      "tokens": [
+        {
+          "symbol": "USDT",
+          "address": "0xaa8e23fb1079ea71e0a56f48a2aa51851d8433d0",
+          "source_chain_type": "evm",
+          "price_feed": {
+            "type": "constant",
+            "intial_value": 100
+          }
+        },
+        {
+          "symbol": "ETH",
+          "address": "0x77c0B7bd331B754e3244840f5639b1B098a250Bb",
+          "source_chain_type": "evm",
+          "is_millieth": true,
+          "price_feed": {
+            "type": "coinmarketcap",
+            "id": "ethereum",
+            "interval": 300,
+            "intial_value": 300000
+          }
+        }
+      ]
+    },
+    {
+      "id": "base_erc20bridge",
+      "type": "erc20bridge",
+      "chains": ["bse", "xch"],
+      "contract_address": "0xDFC30105D48C403E0e69730C04a36b437972009b",
+      "tokens": [
+        {
+          "symbol": "ETH",
+          "address": "0x399a31D74572b4393DDe3B7486571633700226B2",
+          "source_chain_type": "evm",
+          "is_millieth": true,
+          "price_feed": {
+            "type": "coinmarketcap",
+            "id": "ethereum",
+            "interval": 300,
+            "intial_value": 300000
+          }
+        }
+      ]
+    }
   ]
 }
