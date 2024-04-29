@@ -1,6 +1,8 @@
-import json
+from parsers.erc20bridge import ERC20BridgeConfig
+from parsers.catbridge import CATBridgeConfig
 from dataclasses import dataclass, field
 from typing import List, Optional
+import json
 import enum
 import sys
 import os
@@ -30,6 +32,7 @@ class Network:
 @dataclass
 class Config:
     networks: List[Network] = field(default_factory=list)
+    parsers: List[ERC20BridgeConfig | CATBridgeConfig] = field(default_factory=list)
 
     @staticmethod
     def load() -> 'Config':
@@ -42,6 +45,17 @@ class Config:
           sys.exit(1)
         
         config = Config()
+
+        for par in json_data.get('parsers', []):
+            type = par['type']
+            if type == 'erc20bridge':
+                config.parsers.append(ERC20BridgeConfig.from_dict(par))
+            elif type == 'catbridge':
+                config.parsers.append(CATBridgeConfig.from_dict(par))
+            else:
+                print(f"Unknown parser type '{type}'")
+                sys.exit(1)
+        
         for net in json_data.get('networks', []):
             network_id: str = net['id']
 

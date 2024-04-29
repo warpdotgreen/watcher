@@ -8,33 +8,34 @@ import web3
 
 @dataclass
 class ERC20BridgeConfig:
-    id: str
+    type: str
     chains: List[str]
-    contract_address: str
+    contract: str
     tokens: List[Token]
 
     @staticmethod
     def from_dict(data: dict) -> 'ERC20BridgeConfig':
         return ERC20BridgeConfig(
-            id=data['id'],
+            type='erc20bridge',
             chains=data['chains'],
-            contract_address=data['contract_address'],
+            contract=data['contract'],
             tokens=[Token.from_dict(token) for token in data['tokens']]
         )
      
 
 class ERC20BridgeParser(Parser):
-  def process_message(self, db, config: ERC20BridgeConfig, message: Message) -> Message:
-        if [message.source_chain.decode(), message.destination_chain.decode()] not in config.chains:
+  @staticmethod
+  def process_message(db, config: ERC20BridgeConfig, message: Message) -> Message:
+        if message.source_chain.decode() not in config.chains or message.destination_chain.decode() not in config.chains:
             return message
         
         evm_chain = config.chains[0] if config.chains[1] == "xch" else config.chains[1]
         from_evm = message.source_chain.decode() == evm_chain
 
-        if from_evm and '0x' + message.source.hex() != config.contract_address.lower():
+        if from_evm and '0x' + message.source.hex() != config.contract.lower():
             return message
         
-        if not from_evm and '0x' + message.destination.hex() != config.contract_address.lower():
+        if not from_evm and '0x' + message.destination.hex() != config.contract.lower():
             return message
         
         contents = split_message_contents(message.contents)
@@ -46,13 +47,13 @@ class ERC20BridgeParser(Parser):
             asset_contract_address = asset_contract_address[2:]
 
         if from_evm:
-            receiver = encode_puzzle_hash(receiver, 'xch')
+            receiver = encode_puzzle_hash(bytes.fromhex(receiver), 'xch')
         else:
             receiver = web3.Web3.to_checksum_address('0x' + receiver[-40:])
 
         token = None
         for t in config.tokens:
-            if t.address.lower() == '0x' + asset_contract_address:
+            if t.contract.lower() == '0x' + asset_contract_address:
                 token = t
                 break
             
@@ -63,7 +64,7 @@ class ERC20BridgeParser(Parser):
         increment_key_value(db, f"{token.symbol}_locked", amount if from_evm else -amount)
         message.parsed = json.dumps({
             'type': 'erc20_bridge',
-            'contract': token.address,
+            'contract': token.contract,
             'asset_id': token.asset_id,
             'token_symbol': token.symbol,
             'amount_mojo': amount,

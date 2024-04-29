@@ -7,6 +7,7 @@ from sqlalchemy import and_
 from db import setup_database, Message, MessageStatus, join_message_contents
 
 class EVMWatcher:
+    parse_message_func: any
     network_id: str
     rpc_url: str
     min_height: int
@@ -14,7 +15,8 @@ class EVMWatcher:
     portal_address: str
     tasks: list
 
-    def __init__(self, network: Network):
+    def __init__(self, network: Network, parse_message_func: any):
+      self.parse_message_func = parse_message_func
       self.network_id = network.id
       self.rpc_url = network.rpc_url
       self.min_height = network.min_height
@@ -99,6 +101,7 @@ class EVMWatcher:
         )).first()
         if existing_message is None:
             self.log(f"Adding message {self.network_id}-{nonce} to the database...")
+            new_message = self.parse_message_func(db, new_message)
             db.add(new_message)
             db.commit()
         else:

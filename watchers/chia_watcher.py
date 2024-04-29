@@ -39,6 +39,7 @@ class HTTPFullNodeRpcClient(FullNodeRpcClient):
         
 
 class ChiaWatcher:
+    parse_message_func: any
     network_id: str
     rpc_url: str
     portal_launcher_id: bytes32
@@ -48,7 +49,8 @@ class ChiaWatcher:
     tasks: list
     nodes: List[HTTPFullNodeRpcClient]
 
-    def __init__(self, network: Network):
+    def __init__(self, network: Network, parse_message_func: any):
+        self.parse_message_func = parse_message_func
         self.network_id = network.id
         self.rpc_url = network.rpc_url
         self.min_height = network.min_height
@@ -118,6 +120,7 @@ class ChiaWatcher:
             destination_transaction_hash = None,
             status = MessageStatus.SENT
         )
+        msg = self.parse_message_func(db, msg)
         db.add(msg)
         db.commit()
         self.log(f"Message {self.network_id}-{nonce.hex()} added to db.")
@@ -125,6 +128,10 @@ class ChiaWatcher:
 
     async def processCoinRecord(self, db, node: FullNodeRpcClient, coin_record: CoinRecord):
         parent_record = await node.get_coin_record_by_name(coin_record.coin.parent_coin_info)
+        while parent_record is None:
+            await asyncio.sleep(5)
+            parent_record = await node.get_coin_record_by_name(coin_record.coin.parent_coin_info)
+
         parent_spend = await node.get_puzzle_and_solution(
             coin_record.coin.parent_coin_info,
             parent_record.spent_block_index
@@ -151,7 +158,7 @@ class ChiaWatcher:
                                 coin.name(),
                                 parent_record.coin.puzzle_hash,
                                 parent_record.spent_block_index,
-                                parent_record.timestamp,
+                                coin_record.timestamp,
                                 memo
                             )
                         except Exception as e:

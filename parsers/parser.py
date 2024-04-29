@@ -4,18 +4,19 @@ from dataclasses import dataclass
 @dataclass
 class Token:
     symbol: str
-    address: str
+    contract: str
     asset_id: str
 
     @staticmethod
     def from_dict(data: dict) -> 'Token':
         return Token(
             symbol=data['symbol'],
-            address=data['address'],
+            contract=data['contract'],
             asset_id=data.get('asset_id', '')
         )
 
 
 class Parser:
-    def process_message(self, db, config, message: Message) -> Message:
+    @staticmethod
+    def process_message(db, config, message: Message) -> Message:
         pass

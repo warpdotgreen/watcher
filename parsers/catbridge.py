@@ -8,22 +8,23 @@ import web3
 
 @dataclass
 class CATBridgeConfig:
-    id: str
+    type: str
     chains: List[str]
     tokens: List[Token]
 
     @staticmethod
     def from_dict(data: dict) -> 'CATBridgeConfig':
         return CATBridgeConfig(
-            id=data['id'],
+            type='catbridge',
             chains=data['chains'],
             tokens=[Token.from_dict(token) for token in data['tokens']]
         )
      
 
-class ERC20BridgeParser(Parser):
-  def process_message(self, db, config: CATBridgeConfig, message: Message) -> Message:
-        if [message.source_chain.decode(), message.destination_chain.decode()] not in config.chains:
+class CATBridgeParser(Parser):
+  @staticmethod
+  def process_message(db, config: CATBridgeConfig, message: Message) -> Message:
+        if message.source_chain.decode() not in config.chains or message.destination_chain.decode() not in config.chains:
             return message
         
         evm_chain = config.chains[0] if config.chains[1] == "xch" else config.chains[1]
@@ -32,7 +33,7 @@ class ERC20BridgeParser(Parser):
         contract_address = message.source.hex() if from_evm else message.destination.hex()
         token = None
         for tk in config.tokens:
-            if tk.address.lower().replace('0x', '') == contract_address:
+            if tk.contract.lower().replace('0x', '') == contract_address:
                 token = tk
                 break
             
@@ -40,11 +41,11 @@ class ERC20BridgeParser(Parser):
             return message
         
         contents = split_message_contents(message.contents)
-        receiver = contents[0]
+        receiver = contents[0].hex()
         amount = int(contents[1].hex(), 16)
 
         if from_evm:
-            receiver = encode_puzzle_hash(receiver, 'xch')
+            receiver = encode_puzzle_hash(bytes.fromhex(receiver), 'xch')
         else:
             receiver = web3.Web3.to_checksum_address('0x' + receiver[-40:])
 
@@ -52,7 +53,7 @@ class ERC20BridgeParser(Parser):
         increment_key_value(db, f"{token.symbol}_locked", amount if from_evm else -amount)
         message.parsed = json.dumps({
             'type': 'cat_bridge',
-            'contract': token.address,
+            'contract': token.contract,
             'asset_id': token.asset_id,
             'token_symbol': token.symbol,
             'amount_mojo': amount,

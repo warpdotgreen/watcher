@@ -6,6 +6,7 @@ from hypercorn.asyncio import serve
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 import asyncio
+import json
 
 app = FastAPI()
 
@@ -74,7 +75,7 @@ async def read_messages(
     return [process_message(msg) for msg in messages]
 
 
-def process_message(message):
+def process_message(message: Message):
     return {
         "id": message.id,
         "nonce": message.nonce.hex(),
@@ -89,7 +90,8 @@ def process_message(message):
         "destination_block_number": message.destination_block_number,
         "destination_timestamp": message.destination_timestamp,
         "destination_transaction_hash": message.destination_transaction_hash.hex() if message.destination_transaction_hash is not None else None,
-        "status": message.status.value
+        "status": message.status.value,
+        "parsed": json.loads(message.parsed) if message.parsed is not None else {}
     }
 
 

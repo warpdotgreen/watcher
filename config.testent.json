@@ -27,16 +27,16 @@
     {
       "type": "erc20bridge",
       "chains": ["eth", "xch"],
-      "contract_address": "0x1bB5a805b2C9be93b71b80F50bB066A11cB2B3d6",
+      "contract": "0x1bB5a805b2C9be93b71b80F50bB066A11cB2B3d6",
       "tokens": [
         {
           "symbol": "USDT",
-          "address": "0xaa8e23fb1079ea71e0a56f48a2aa51851d8433d0",
+          "contract": "0xaa8e23fb1079ea71e0a56f48a2aa51851d8433d0",
           "asset_id": "0fcd3b5bf3dbd27c96f3fd70c173a969648e71b7e3c466dde4159d55849d28ec"
         },
         {
           "symbol": "milliETH",
-          "address": "0x77c0B7bd331B754e3244840f5639b1B098a250Bb",
+          "contract": "0x77c0B7bd331B754e3244840f5639b1B098a250Bb",
           "asset_id": "31d6a3e7261cce69aaca28a8562e4314ff445b4968586b6703b7b957c42b5c58"
         }
       ]
@@ -44,7 +44,7 @@
     {
       "type": "erc20bridge",
       "chains": ["bse", "xch"],
-      "contract_address": "0xDFC30105D48C403E0e69730C04a36b437972009b",
+      "contract": "0xDFC30105D48C403E0e69730C04a36b437972009b",
       "tokens": [
         {
           "symbol": "milliETH",
@@ -59,12 +59,12 @@
       "tokens": [
         {
           "symbol": "XCH",
-          "address": "0xFD45fef1C1829FEd9256f765A030Ef50a41d4204",
+          "contract": "0xFD45fef1C1829FEd9256f765A030Ef50a41d4204",
           "asset_id": null
         },
         {
           "symbol": "DBX",
-          "address": "0x44a63DED7582De03C44c1b8AC8492373C8b3E974",
+          "contract": "0x44a63DED7582De03C44c1b8AC8492373C8b3E974",
           "asset_id": "d82dd03f8a9ad2f84353cd953c4de6b21dbaaf7de3ba3f4ddd9abe31ecba80ad"
         }
       ]
