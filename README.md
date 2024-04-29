@@ -13,9 +13,15 @@ Install dependencies:
 ```bash
 pip install --extra-index-url https://pypi.chia.net/simple/ chia-blockchain==2.2.0
 pip install python-dotenv==1.0.1
+pip install sqlalchemy==2.0.29
 pip install web3==6.17.2
 pip install fastapi==0.110.2
 pip install hypercorn==0.16.0
+```
+
+Create config:
+```bash
+cp config.testnet.json config.json
 ```
 
 Run watcher:
