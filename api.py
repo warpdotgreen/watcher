@@ -1,10 +1,9 @@
 from db import Message, setup_database, split_message_contents, KeyValueEntry
 from hypercorn.config import Config as HyperConfig
-from fastapi import FastAPI, HTTPException, Query
-from starlette.responses import JSONResponse
+from fastapi import FastAPI, Query
 from hypercorn.asyncio import serve
 from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy import func
 import asyncio
 import json
 
@@ -78,6 +77,16 @@ async def read_messages(
         query = query.order_by(order_column.desc() if sort == "desc" else order_column.asc())
     
     messages = query.offset(offset).limit(limit).all()
+    return [process_message(msg) for msg in messages]
+
+
+@app.get("/latest-messages")
+async def read_latest_messages(limit: int = Query(10, le=100)):
+    db: Session = setup_database()
+    query = db.query(Message).order_by(
+        func.coalesce(Message.destination_timestamp, Message.source_timestamp).desc()
+    )
+    messages = query.limit(limit).all()
     return [process_message(msg) for msg in messages]
 
 
