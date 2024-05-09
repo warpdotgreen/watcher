@@ -3,53 +3,53 @@
     {
       "id": "xch",
       "type": "chia",
-      "min_height": 515000,
+      "min_height": 737650,
       "message_toll": 1000000000,
-      "portal_launcher_id": "9229ce0989917cacd6af54c62b26fa1e56cf7505f61801e04c5b00a7f2c5b138",
+      "portal_launcher_id": "ed3ae61bacb1479b2ab8a771b758bc551ec8ba5c930bce002f30ae8a34a06abe",
       "bridging_puzzle_hash": "a09eb1ea8c6e83c0166801dabcf4a70d361cc7f6d89c4a46bcd400ac57719037"
     },
     {
       "id": "eth",
       "type": "evm",
-      "min_height": 5744830,
+      "min_height": 5857085,
       "max_block_range": 10000,
-      "portal_address": "0x67e99b36a37d7794180180c5b31F7cb97b019798"
+      "portal_address": "0xB5651bA4DeaF815f5929243d6ACF99D2d7C113eb"
     },
     {
       "id": "bse",
       "type": "evm",
-      "min_height": 8960653,
+      "min_height": 9672770,
       "max_block_range": 1000,
-      "portal_address": "0x9eeD3bdA5Dac7Eb4E7648e823e0C182536E1f260" 
+      "portal_address": "0xB0adb9dA8C730859cc659b4fda7Ec94b5884A4E1" 
     }
   ],
   "parsers": [
     {
       "type": "erc20bridge",
       "chains": ["eth", "xch"],
-      "contract": "0x1bB5a805b2C9be93b71b80F50bB066A11cB2B3d6",
+      "contract": "0xc733F712288f8B20201846bbE979a715Ff8F8Fcb",
       "tokens": [
         {
           "symbol": "USDT",
           "contract": "0xaa8e23fb1079ea71e0a56f48a2aa51851d8433d0",
-          "asset_id": "0fcd3b5bf3dbd27c96f3fd70c173a969648e71b7e3c466dde4159d55849d28ec"
+          "asset_id": "36b5bbcfbd757ec6b4f27b09dcd9f8e0da7b0f8c3b452ace42b1765fee433b52"
         },
         {
           "symbol": "milliETH",
-          "contract": "0x77c0B7bd331B754e3244840f5639b1B098a250Bb",
-          "asset_id": "31d6a3e7261cce69aaca28a8562e4314ff445b4968586b6703b7b957c42b5c58"
+          "contract": "0xFA2839748535B0eeAaCbbC932da6676DbFF45156",
+          "asset_id": "36b5bbcfbd757ec6b4f27b09dcd9f8e0da7b0f8c3b452ace42b1765fee433b52"
         }
       ]
     },
     {
       "type": "erc20bridge",
       "chains": ["bse", "xch"],
-      "contract": "0xDFC30105D48C403E0e69730C04a36b437972009b",
+      "contract": "0x895bef3757f7965D8AA9Fcb30Bd1539e03E4a24E",
       "tokens": [
         {
           "symbol": "milliETH",
-          "contract": "0x399a31D74572b4393DDe3B7486571633700226B2",
-          "asset_id": "f37425ba3311ac0baa408108cc62f20d7402f985027e3d8d19f1bd967859605c"
+          "contract": "0xE063EefEca08c1Ef7C42a90D39bA50A660a505C1",
+          "asset_id": "fcfdda5dbdbda19ca7fe0ad8ced1afca935cc59810bdb5bec30ef6b058e77fac"
         }
       ]
     },
@@ -59,12 +59,28 @@
       "tokens": [
         {
           "symbol": "XCH",
-          "contract": "0xFD45fef1C1829FEd9256f765A030Ef50a41d4204",
+          "contract": "0xEC6a48BD01E7B031050FB1d1F4246abfd31114FA",
           "asset_id": null
         },
         {
           "symbol": "DBX",
-          "contract": "0x44a63DED7582De03C44c1b8AC8492373C8b3E974",
+          "contract": "0x5C5d6FA07c570DF689A34C9334B1DC9fe6E9dF1C",
+          "asset_id": "d82dd03f8a9ad2f84353cd953c4de6b21dbaaf7de3ba3f4ddd9abe31ecba80ad"
+        }
+      ]
+    },
+    {
+      "type": "catbridge",
+      "chains": ["bse", "xch"],
+      "tokens": [
+        {
+          "symbol": "XCH",
+          "contract": "0x092bA3a8CbF8126255E83f3D548085F9FB87F5C8",
+          "asset_id": null
+        },
+        {
+          "symbol": "DBX",
+          "contract": "0x2FD5f17f7F9284f1c12ff7bF45cB38df02519Ea5",
           "asset_id": "d82dd03f8a9ad2f84353cd953c4de6b21dbaaf7de3ba3f4ddd9abe31ecba80ad"
         }
       ]
