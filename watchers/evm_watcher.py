@@ -86,7 +86,7 @@ class EVMWatcher:
             destination=event.args.destination,
             contents=join_message_contents(event.args.contents),
             source_block_number=event.blockNumber,
-            source_timestamp=web3.eth.get_block(event.blockNumber).timestamp,
+            source_timestamp=int(web3.eth.get_block(event.blockNumber).timestamp),
             source_transaction_hash=event.transactionHash,
             destination_block_number=None,
             destination_timestamp=None,

@@ -21,7 +21,7 @@ pip install hypercorn==0.16.0
 
 Create config:
 ```bash
-cp config.testnet.json config.json
+cp config.mainnet.json config.json
 ```
 
 Run watcher:

@@ -1,0 +1,99 @@
+{
+  "networks": [
+    {
+      "id": "xch",
+      "type": "chia",
+      "min_height": 5389997,
+      "message_toll": 1000000000,
+      "portal_launcher_id": "46e2bdbbcd1e372523ad4cd3c9cf4b372c389733c71bb23450f715ba5aa56d50",
+      "bridging_puzzle_hash": "a09eb1ea8c6e83c0166801dabcf4a70d361cc7f6d89c4a46bcd400ac57719037"
+    },
+    {
+      "id": "eth",
+      "type": "evm",
+      "min_height": 19917838,
+      "max_block_range": 10000,
+      "portal_address": "0x2593C582B7a24d94Ba0056B493Fd4048bd99fc3F"
+    },
+    {
+      "id": "bse",
+      "type": "evm",
+      "min_height": 14748575,
+      "max_block_range": 1000,
+      "portal_address": "0x382bd36d1dE6Fe0a3D9943004D3ca5Ee389627EE" 
+    }
+  ],
+  "parsers": [
+    {
+      "type": "erc20bridge",
+      "chains": ["eth", "xch"],
+      "contract": "0x208b80E85dAC3354DD80f72cC272297909EE81b7",
+      "tokens": [
+        {
+          "symbol": "USDC",
+          "contract": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+          "asset_id": "bbb51b246fbec1da1305be31dcf17151ccd0b8231a1ec306d7ce9f5b8c742b9e"
+        },
+        {
+          "symbol": "USDT",
+          "contract": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+          "asset_id": "634f9f0de1a6c39a2189948b8e61b6852fbf774f73b0e36e143e841c49a0798c"
+        },
+        {
+          "symbol": "milliETH",
+          "contract": "0xf2D5d8eC69E2faed5eB4De90749c87ee314a4B12",
+          "asset_id": "4cb15a8ecc85068fb1f98c09a5e489d1ad61b2af79690ce00f9fc4803c8b597f"
+        }
+      ]
+    },
+    {
+      "type": "erc20bridge",
+      "chains": ["bse", "xch"],
+      "contract": "0x895bef3757f7965D8AA9Fcb30Bd1539e03E4a24E",
+      "tokens": [
+        {
+          "symbol": "milliETH",
+          "contract": "0xf2D5d8eC69E2faed5eB4De90749c87ee314a4B12",
+          "asset_id": "f322a205c034fe28681829fa5a2e483ac421f0952eb1292945c8db06e0a471a6"
+        },
+        {
+          "symbol": "USDC",
+          "contract": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "asset_id": "ccfe7a583534c1699b591c3a9c06abc11555d999c0f7578ff00e7f4387443d51"
+        }
+      ]
+    },
+    {
+      "type": "catbridge",
+      "chains": ["eth", "xch"],
+      "tokens": [
+        {
+          "symbol": "XCH",
+          "contract": "0x1be362F422A862055dCFF627D33f9bD478e6C7d7",
+          "asset_id": null
+        }
+      ]
+    },
+    {
+      "type": "catbridge",
+      "chains": ["bse", "xch"],
+      "tokens": [
+        {
+          "symbol": "XCH",
+          "contract": "0x36be1d329444aeF5D28df3662Ec5B4F965Cd93E9",
+          "asset_id": null
+        },
+        {
+          "symbol": "DBX",
+          "contract": "0x2dabfFED5584DAb0CA3f9A56BA849f97A08cAd9A",
+          "asset_id": "db1a9020d48d9d4ad22631b66ab4b9ebd3637ef7758ad38881348c5d24c38f20"
+        },
+        {
+          "symbol": "SBX",
+          "contract": "0x0f374737547cC191f940E02763084CD62BCDe4a6",
+          "asset_id": "a628c1c2c6fcb74d53746157e438e108eab5c0bb3e5c80ff9b1910b3e4832913"
+        }
+      ]
+    }
+  ]
+}
