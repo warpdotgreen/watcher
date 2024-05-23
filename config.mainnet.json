@@ -92,6 +92,11 @@
           "symbol": "SBX",
           "contract": "0x0f374737547cC191f940E02763084CD62BCDe4a6",
           "asset_id": "a628c1c2c6fcb74d53746157e438e108eab5c0bb3e5c80ff9b1910b3e4832913"
+        },
+        {
+          "symbol": "HOA",
+          "contract": "0xee642384091f4bb9ab457b875E4e209b5a0BD147",
+          "asset_id": "e816ee18ce2337c4128449bc539fbbe2ecfdd2098c4e7cab4667e223c3bdc23d"
         }
       ]
     }
