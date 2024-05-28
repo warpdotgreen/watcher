@@ -8,6 +8,7 @@ from sqlalchemy import func
 from db import MessageStatus
 import asyncio
 import json
+import os
 
 app = FastAPI()
 
@@ -113,8 +114,9 @@ def process_message(message: Message):
 
 
 async def start_api():
+    bind_address = os.getenv("BIND_ADDRESS", "0.0.0.0:8000")
     hyper_config = HyperConfig()
-    hyper_config.bind = ["0.0.0.0:8000"]
+    hyper_config.bind = [bind_address]
     await serve(app, hyper_config)
 
 
