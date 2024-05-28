@@ -21,6 +21,7 @@ class MessageStatus(enum.Enum):
 
 class EnumType(TypeDecorator):
     impl = String
+    cache_ok = True
 
     def __init__(self, enum):
         super().__init__()
