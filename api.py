@@ -2,8 +2,10 @@ from db import Message, setup_database, split_message_contents, KeyValueEntry
 from hypercorn.config import Config as HyperConfig
 from fastapi import FastAPI, Query
 from hypercorn.asyncio import serve
+from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from db import MessageStatus
 import asyncio
 import json
 
@@ -30,23 +32,23 @@ async def read_stats():
 
 @app.get("/messages")
 async def read_messages(
-    id: int = None,
-    nonce: str = None,
-    from_id: int = None,
-    to_id: int = None,
+    id: Optional[int] = None,
+    nonce: Optional[str] = None,
+    from_id: Optional[int] = None,
+    to_id: Optional[int] = None,
     limit: int = Query(10, le=100),
     offset: int = 0,
-    from_source_block_number: int = None,
-    to_source_block_number: int = None,
-    from_destination_block_number: int = None,
-    to_destination_block_number: int = None,
+    from_source_block_number: Optional[int] = None,
+    to_source_block_number: Optional[int] = None,
+    from_destination_block_number: Optional[int] = None,
+    to_destination_block_number: Optional[int] = None,
     order_by: str = Query("id", pattern="^(id|source_block_number|destination_block_number)$"),
     sort: str = Query("desc", pattern="^(asc|desc)$"),
-    source_chain: str = None,
-    destination_chain: str = None,
-    status: str = None,
-    source: str = None,
-    destination: str = None
+    source_chain: Optional[str] = None,
+    destination_chain: Optional[str] = None,
+    status: Optional[MessageStatus] = None,
+    source: Optional[str] = None,
+    destination: Optional[str] = None
 ):
     db: Session = setup_database()
     query = db.query(Message)
@@ -56,11 +58,11 @@ async def read_messages(
     if nonce:
         query = query.filter(Message.nonce == bytes.fromhex(nonce))
     if from_id and to_id:
-        query = query.filter(Message.id >= from_id, Message.id <= to_id)
+        query = query.filter(Message.id.between(from_id, to_id))
     if from_source_block_number and to_source_block_number:
-        query = query.filter(Message.source_block_number >= from_source_block_number, Message.source_block_number <= to_source_block_number)
+        query = query.filter(Message.source_block_number.between(from_source_block_number, to_source_block_number))
     if from_destination_block_number and to_destination_block_number:
-        query = query.filter(Message.destination_block_number >= from_destination_block_number, Message.destination_block_number <= to_destination_block_number)
+        query = query.filter(Message.destination_block_number.between(from_destination_block_number, to_destination_block_number))
     if source_chain:
         query = query.filter(Message.source_chain == source_chain.encode())
     if destination_chain:
@@ -72,11 +74,11 @@ async def read_messages(
     if destination:
         query = query.filter(Message.destination == bytes.fromhex(destination))
     
-    if order_by:
-        order_column = getattr(Message, order_by)
-        query = query.order_by(order_column.desc() if sort == "desc" else order_column.asc())
+    order_column = getattr(Message, order_by)
+    query = query.order_by(order_column.desc() if sort == "desc" else order_column.asc())
     
     messages = query.offset(offset).limit(limit).all()
+    db.close()
     return [process_message(msg) for msg in messages]
 
 
