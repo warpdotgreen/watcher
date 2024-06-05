@@ -5,51 +5,51 @@
       "type": "chia",
       "min_height": 737650,
       "message_toll": 1000000000,
-      "portal_launcher_id": "ed3ae61bacb1479b2ab8a771b758bc551ec8ba5c930bce002f30ae8a34a06abe",
+      "portal_launcher_id": "eca7eca48e658d45a752d2b31ca47e5683c1c86de7f7cb5c3285ef6ec56e10f5",
       "bridging_puzzle_hash": "a09eb1ea8c6e83c0166801dabcf4a70d361cc7f6d89c4a46bcd400ac57719037"
     },
     {
       "id": "eth",
       "type": "evm",
-      "min_height": 5857085,
+      "min_height": 6045312,
       "max_block_range": 10000,
-      "portal_address": "0xB5651bA4DeaF815f5929243d6ACF99D2d7C113eb"
+      "portal_address": "0x383D27dA16A24a2920b14aA93270Efccf32F4104"
     },
     {
       "id": "bse",
       "type": "evm",
-      "min_height": 9672770,
+      "min_height": 10917783,
       "max_block_range": 1000,
-      "portal_address": "0xB0adb9dA8C730859cc659b4fda7Ec94b5884A4E1" 
+      "portal_address": "0x1c14e49d74c4c8302CEFC58A08E3CE77Eb38A066" 
     }
   ],
   "parsers": [
     {
       "type": "erc20bridge",
       "chains": ["eth", "xch"],
-      "contract": "0xc733F712288f8B20201846bbE979a715Ff8F8Fcb",
+      "contract": "0x0820a3512585dDBB720C25489DEcE6D9899C81b0",
       "tokens": [
         {
           "symbol": "USDT",
           "contract": "0xaa8e23fb1079ea71e0a56f48a2aa51851d8433d0",
-          "asset_id": "36b5bbcfbd757ec6b4f27b09dcd9f8e0da7b0f8c3b452ace42b1765fee433b52"
+          "asset_id": "0720c04bdd57285f3482ddf1653495af462ef39033d798ff007606c69272610c"
         },
         {
           "symbol": "milliETH",
-          "contract": "0xFA2839748535B0eeAaCbbC932da6676DbFF45156",
-          "asset_id": "36b5bbcfbd757ec6b4f27b09dcd9f8e0da7b0f8c3b452ace42b1765fee433b52"
+          "contract": "0xc08Bce08391807CBa2cF76BcFD693ce82ba6d27C",
+          "asset_id": "6cfc3cb0e14c9cf3065f55a4dde78554a17817496db816eb8c8ad187da70bda2"
         }
       ]
     },
     {
       "type": "erc20bridge",
       "chains": ["bse", "xch"],
-      "contract": "0x895bef3757f7965D8AA9Fcb30Bd1539e03E4a24E",
+      "contract": "0x1e15a85558042aa1378071853dA500D3A3669214",
       "tokens": [
         {
           "symbol": "milliETH",
-          "contract": "0xE063EefEca08c1Ef7C42a90D39bA50A660a505C1",
-          "asset_id": "fcfdda5dbdbda19ca7fe0ad8ced1afca935cc59810bdb5bec30ef6b058e77fac"
+          "contract": "0xf913766646C8E404183EbC8Ba1E3d379305CE155",
+          "asset_id": "253ee93bd6c3e198496aae6e0a8077d3de6a2c68c2df6d80d62b7a6c3884035e"
         }
       ]
     },
@@ -59,13 +59,8 @@
       "tokens": [
         {
           "symbol": "XCH",
-          "contract": "0xEC6a48BD01E7B031050FB1d1F4246abfd31114FA",
+          "contract": "0x3df856f8d94BAF6527b89Cf07fAFea447A4418CA",
           "asset_id": null
-        },
-        {
-          "symbol": "DBX",
-          "contract": "0x5C5d6FA07c570DF689A34C9334B1DC9fe6E9dF1C",
-          "asset_id": "d82dd03f8a9ad2f84353cd953c4de6b21dbaaf7de3ba3f4ddd9abe31ecba80ad"
         }
       ]
     },
@@ -75,12 +70,12 @@
       "tokens": [
         {
           "symbol": "XCH",
-          "contract": "0x092bA3a8CbF8126255E83f3D548085F9FB87F5C8",
+          "contract": "0xf374cF9D090E19E8d39Db96eEDc8daf62a6C435a",
           "asset_id": null
         },
         {
           "symbol": "DBX",
-          "contract": "0x2FD5f17f7F9284f1c12ff7bF45cB38df02519Ea5",
+          "contract": "0x360fE6604dC410BB98595C76E0aA4B7ba35d3B70",
           "asset_id": "d82dd03f8a9ad2f84353cd953c4de6b21dbaaf7de3ba3f4ddd9abe31ecba80ad"
         }
       ]
