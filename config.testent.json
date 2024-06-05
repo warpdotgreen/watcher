@@ -3,7 +3,7 @@
     {
       "id": "xch",
       "type": "chia",
-      "min_height": 737650,
+      "min_height": 870390,
       "message_toll": 1000000000,
       "portal_launcher_id": "eca7eca48e658d45a752d2b31ca47e5683c1c86de7f7cb5c3285ef6ec56e10f5",
       "bridging_puzzle_hash": "a09eb1ea8c6e83c0166801dabcf4a70d361cc7f6d89c4a46bcd400ac57719037"
