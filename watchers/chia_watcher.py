@@ -1,3 +1,4 @@
+import sys
 import asyncio
 import aiohttp
 import logging
@@ -185,79 +186,85 @@ class ChiaWatcher:
         db = self.getDb()
 
         while True:
-            last_synced_height = db.query(Message.source_block_number).filter(
-                Message.source_chain == self.network_id.encode()
-            ).order_by(Message.source_block_number.desc()).first()
+            try:
+                last_synced_height = db.query(Message.source_block_number).filter(
+                    Message.source_chain == self.network_id.encode()
+                ).order_by(Message.source_block_number.desc()).first()
 
-            if last_synced_height is None:
-                last_synced_height = self.min_height
-            else:
-                last_synced_height = last_synced_height[0] + 1
+                if last_synced_height is None:
+                    last_synced_height = self.min_height
+                else:
+                    last_synced_height = last_synced_height[0] + 1
 
-            unfiltered_coin_records = await node.get_coin_records_by_puzzle_hash(
-                self.bridging_puzzle_hash,
-                include_spent_coins=True,
-                start_height=last_synced_height
-            )
-            if unfiltered_coin_records is None:
-                self.log("No new coin records; checking again in 30s...")
-                await asyncio.sleep(30)
-                continue
+                unfiltered_coin_records = await node.get_coin_records_by_puzzle_hash(
+                    self.bridging_puzzle_hash,
+                    include_spent_coins=True,
+                    start_height=last_synced_height
+                )
+                if unfiltered_coin_records is None:
+                    self.log("No new coin records; checking again in 30s...")
+                    await asyncio.sleep(30)
+                    continue
 
-            # because get_coin_records_by_puzzle_hash can be quite resource exensive, we'll process all results
-            # instead of only one and calling again
-            skip_coin_ids = []
-            reorg = False
+                # because get_coin_records_by_puzzle_hash can be quite resource exensive, we'll process all results
+                # instead of only one and calling again
+                skip_coin_ids = []
+                reorg = False
 
-            while not reorg:
-                earliest_unprocessed_coin_record = None
-                for coin_record in unfiltered_coin_records:
-                    nonce = coin_record.coin.name()
-                    if nonce in skip_coin_ids:
-                        continue
+                while not reorg:
+                    earliest_unprocessed_coin_record = None
+                    for coin_record in unfiltered_coin_records:
+                        nonce = coin_record.coin.name()
+                        if nonce in skip_coin_ids:
+                            continue
 
-                    if coin_record.coin.amount < self.message_toll:
-                        self.log(f"Skipping nonce {nonce.hex()} because toll is not high enough")
-                        skip_coin_ids.append(nonce)
-                        continue
+                        if coin_record.coin.amount < self.message_toll:
+                            self.log(f"Skipping nonce {nonce.hex()} because toll is not high enough")
+                            skip_coin_ids.append(nonce)
+                            continue
 
-                    message_in_db = db.query(Message).filter(and_(
-                        Message.nonce == nonce,
-                        Message.source_chain == self.network_id.encode()
-                    )).first()
-                    if message_in_db is not None:
-                        self.log(f"Nonce {nonce.hex()} already in db; skipping")
-                        skip_coin_ids.append(nonce)
-                        continue
+                        message_in_db = db.query(Message).filter(and_(
+                            Message.nonce == nonce,
+                            Message.source_chain == self.network_id.encode()
+                        )).first()
+                        if message_in_db is not None:
+                            self.log(f"Nonce {nonce.hex()} already in db; skipping")
+                            skip_coin_ids.append(nonce)
+                            continue
 
-                    if earliest_unprocessed_coin_record is None or coin_record.confirmed_block_index < earliest_unprocessed_coin_record.confirmed_block_index:
-                        earliest_unprocessed_coin_record = coin_record
+                        if earliest_unprocessed_coin_record is None or coin_record.confirmed_block_index < earliest_unprocessed_coin_record.confirmed_block_index:
+                            earliest_unprocessed_coin_record = coin_record
 
-                if earliest_unprocessed_coin_record is None:
-                    break
+                    if earliest_unprocessed_coin_record is None:
+                        break
 
-                # wait for this to actually be confirmed :)
-                # 4 blocks for explorer
-                while earliest_unprocessed_coin_record.confirmed_block_index + 3 > (await self.get_current_height(node)):
-                    self.log(f"Coin {self.network_id}-0x{earliest_unprocessed_coin_record.coin.name().hex()}: does not yet have 3 confs; retrying in 15s...")
-                    await asyncio.sleep(15)
+                    # wait for this to actually be confirmed :)
+                    # 4 blocks for explorer
+                    while earliest_unprocessed_coin_record.confirmed_block_index + 3 > (await self.get_current_height(node)):
+                        self.log(f"Coin {self.network_id}-0x{earliest_unprocessed_coin_record.coin.name().hex()}: does not yet have 3 confs; retrying in 15s...")
+                        await asyncio.sleep(15)
 
-                coin_record_copy = await node.get_coin_record_by_name(earliest_unprocessed_coin_record.coin.name())
-                if coin_record_copy is None or coin_record_copy.confirmed_block_index != earliest_unprocessed_coin_record.confirmed_block_index:
-                    self.log(f"Coin {self.network_id}-0x{earliest_unprocessed_coin_record.coin.name().hex()}: possible reorg; re-processing")
-                    reorg = True
-                    break
+                    coin_record_copy = await node.get_coin_record_by_name(earliest_unprocessed_coin_record.coin.name())
+                    if coin_record_copy is None or coin_record_copy.confirmed_block_index != earliest_unprocessed_coin_record.confirmed_block_index:
+                        self.log(f"Coin {self.network_id}-0x{earliest_unprocessed_coin_record.coin.name().hex()}: possible reorg; re-processing")
+                        reorg = True
+                        break
 
-                self.log(f"Processing coin record for nonce {earliest_unprocessed_coin_record.coin.name().hex()}...")
-                await self.processCoinRecord(db, node, earliest_unprocessed_coin_record)
+                    self.log(f"Processing coin record for nonce {earliest_unprocessed_coin_record.coin.name().hex()}...")
+                    await self.processCoinRecord(db, node, earliest_unprocessed_coin_record)
 
-                nonce = earliest_unprocessed_coin_record.coin.name()
-                self.log(f"Marking {nonce.hex()} as processed")
-                skip_coin_ids.append(nonce)
+                    nonce = earliest_unprocessed_coin_record.coin.name()
+                    self.log(f"Marking {nonce.hex()} as processed")
+                    skip_coin_ids.append(nonce)
 
-            if not reorg:
-                self.log("Processed all coin records; checking again in 30s...")
-                await asyncio.sleep(30)
+                if not reorg:
+                    self.log("Processed all coin records; checking again in 30s...")
+                    await asyncio.sleep(30)
+
+            except Exception as e:
+                self.log(f"Error in sentMessageWatcher: {e}")
+                print(e)
+                sys.exit(1)
 
     async def syncPortal(
         self,
@@ -401,7 +408,12 @@ class ChiaWatcher:
         self.log(f"Latest portal coin: {self.network_id}-0x{last_synced_portal.coin_id.hex()}")
 
         while True:
-            last_synced_portal = await self.syncPortal(db, node, last_synced_portal)
+            try:
+                last_synced_portal = await self.syncPortal(db, node, last_synced_portal)
+            except Exception as e:
+                self.log(f"Error in receivedMessageWatcher: {e}")
+                print(e)
+                sys.exit(1)
 
 
     def start(self, loop):
