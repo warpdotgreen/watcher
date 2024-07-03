@@ -111,7 +111,7 @@ class ChiaWatcher:
             source_chain=self.network_id.encode(),
             source=source,
             destination_chain=destination_chain,
-            destination=destination,
+            destination=destination if len(destination) == 32 else b'\x00' * (32 - len(destination)) + destination,
             contents=join_message_contents(contents),
             source_block_number=created_height,
             source_timestamp = created_timestamp,
