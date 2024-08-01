@@ -60,6 +60,11 @@
           "symbol": "USDC",
           "contract": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
           "asset_id": "ccfe7a583534c1699b591c3a9c06abc11555d999c0f7578ff00e7f4387443d51"
+        },
+        {
+          "symbol": "EURC",
+          "contract": "0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42",
+          "asset_id": "31ffd54c5b38bb33352dc0be0ebf9cf4f29a6329156dd4811d6f4254f85c8200"
         }
       ]
     },
