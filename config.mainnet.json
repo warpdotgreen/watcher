@@ -107,6 +107,11 @@
           "symbol": "WARP",
           "contract": "0x6ca253E17e2334165113Be86C70Bc2655798BDcB",
           "asset_id": "563c883b801c4e6c736994d09ec69c94c9c6482612b4655b76097282b8d2fae6"
+        },
+        {
+          "symbol": "BEPE",
+          "contract": "0xBB5cBDAE23C5368557CC9A32337863eECf03cF9f",
+          "asset_id": "ccda69ff6c44d687994efdbee30689be51d2347f739287ab4bb7b52344f8bf1d"
         }
       ]
     }
