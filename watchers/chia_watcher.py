@@ -337,6 +337,7 @@ class ChiaWatcher:
                 Message.nonce == nonce,
                 Message.destination_chain == self.network_id.encode()
             )).first()
+            cnt = 0
             while msg is None:
                 self.log(f"Message {source_chain.decode()}-{nonce.hex()} not found in db; waiting 10s for other threads to catch up")
                 await asyncio.sleep(10)
@@ -345,6 +346,11 @@ class ChiaWatcher:
                     Message.nonce == nonce,
                     Message.destination_chain == self.network_id.encode()
                 )).first()
+
+                cnt += 1
+                if cnt >= 5:
+                    self.log("Something's not right with this message - exiting...")
+                    sys.exit(1)
             
             self.log(f"Updating status of message {source_chain.decode()}-{nonce.hex()} to 'RECEIVED'")
             msg.destination_block_number = coin_record.spent_block_index
