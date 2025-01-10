@@ -1,4 +1,5 @@
 import sys
+import json
 import asyncio
 import aiohttp
 import logging
@@ -27,7 +28,7 @@ class HTTPFullNodeRpcClient(FullNodeRpcClient):
         async with self.session.post(f"{self.base_url}/{path}", json=request_json) as response:
             response.raise_for_status()
 
-            res_json = await response.json()
+            res_json = json.loads(await response.text())
             if not res_json["success"]:
                 raise ValueError(res_json)
             return res_json
@@ -205,6 +206,7 @@ class ChiaWatcher:
                     self.log("No new coin records; checking again in 30s...")
                     await asyncio.sleep(30)
                     continue
+                unfiltered_coin_records = [coin_record for coin_record in unfiltered_coin_records if coin_record.confirmed_block_index > last_synced_height]
 
                 # because get_coin_records_by_puzzle_hash can be quite resource exensive, we'll process all results
                 # instead of only one and calling again
