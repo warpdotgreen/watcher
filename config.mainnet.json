@@ -117,6 +117,91 @@
           "symbol": "PEPE",
           "contract": "0xC71690cd048F30F58Eee0d138fc19647bDaD79C7",
           "asset_id": "ec9d874e152e888231024c72e391fc484e8b6a1cf744430a322a0544e207bf46"
+        },
+        {
+          "symbol": "SPROUT",
+          "contract": "0x68f305Cca4D3462Ac8CAf759492Ed9d33E4DFF40",
+          "asset_id": "ab558b1b841365a24d1ff2264c55982e55664a8b6e45bc107446b7e667bb463b"
+        },
+        {
+          "symbol": "LOVE",
+          "contract": "0xCf6Ca3929b00Ebc7fF504b165ca40C44087CAE47",
+          "asset_id": "70010d83542594dd44314efbae75d82b3d9ae7d946921ed981a6cd08f0549e50"
+        },
+        {
+          "symbol": "$CHIA",
+          "contract": "0x05AefaFfF978EA4F9E6ff9FA3Bc2465B90598549",
+          "asset_id": "69326954fe16117cd6250e929748b2a1ab916347598bc8180749279cfae21ddb"
+        },
+        {
+          "symbol": "TWV",
+          "contract": "0xb23b3F88E1c4564C42177B7b28757f275D2aCBB9",
+          "asset_id": "36029c0e2f17c2021c5f078a85917bbb10a006cd9431da74d26344723fc3679e"
+        },
+        {
+          "symbol": "YKY",
+          "contract": "0x78701035aCB24261d532E73B0836478c5c01E0f1",
+          "asset_id": "f930c6c02e8bb72e3d06eabb61483fbd4bbbc41906336e4db49c81affa51df81"
+        },
+        {
+          "symbol": "NIOC",
+          "contract": "0x8f0Fc5F93832A1A3368e0a25c2798e1B4c4c7437",
+          "asset_id": "79f6313fdb6ba66347a5bcad4af6878ac07bf5fafedeb384c3b350d913c8b6b6"
+        },
+        {
+          "symbol": "$BTC",
+          "contract": "0x36191b19FafA6B0b470E1A9986Ad50a0AD559950",
+          "asset_id": "c6be668127b983686af02ceb26486ead5144c958c9f450b273c4549f209a4660"
+        },
+        {
+          "symbol": "$CAT",
+          "contract": "0xf543D9930337af6A6601D19564AaeB58EbF87451",
+          "asset_id": "086287bab372e0fcf2ce36b43e4eab3e0ad0c6fcf6e1a326612e5240a2a8abb5"
+        },
+        {
+          "symbol": "WAR",
+          "contract": "0xBB5ed692F675108B454202b8789351599f6E829C",
+          "asset_id": "cb21f3625d7b4e8f843dda59b4b7866862f16c376077134cc8735e2b3a29c011"
+        },
+        {
+          "symbol": "MWIF",
+          "contract": "0x014bab9524f4408ef13262401E5609547F7E8718",
+          "asset_id": "e233f9c0ebc092f083aaacf6295402ed0a0bb1f9acb1b56500d8a4f5a5e4c957"
+        },
+        {
+          "symbol": "MZ",
+          "contract": "0xaC0c9DB04234668A1C15F47C7BE9c5D7040b0506",
+          "asset_id": "b8edcc6a7cf3738a3806fdbadb1bbcfc2540ec37f6732ab3a6a4bbcd2dbec105"
+        },
+        {
+          "symbol": "GOAT",
+          "contract": "0x8DC7294F5d6C5fbF0E926dEcE719e5db648bF45c",
+          "asset_id": "01ac0cb37e80075dd028e2ceb433a79a5eb62649d5fbfd2e94650e33fa7d1cff"
+        },
+        {
+          "symbol": "STR",
+          "contract": "0x000bA7E6824AA002033Df7BEDf8bAB72Fc6465e9",
+          "asset_id": "8c77de1427156b98fb15cce77d908f79bd69f6b4b8e3a60d8e051dac481b5365"
+        },
+        {
+          "symbol": "STNK",
+          "contract": "0xdc77bca5ed07a73D4E3E0D5E5817ebDC69EEc9bf",
+          "asset_id": "bf96d9d1a1973d41047e74d43117799d5b63b275c8f26921e6228ec84b553da9"
+        },
+        {
+          "symbol": "JOCK",
+          "contract": "0x20CC08b1135D7Ae892D6b5C799f0aBb51D822899",
+          "asset_id": "3b19b64418682ad60c6278d85f8076a108c9fb4ca385d401c6d41ba2bfa9612e"
+        },
+        {
+          "symbol": "CHUMP",
+          "contract": "0xCF38291b2A89Cb884a161E363Bfcc2b2F70E1844",
+          "asset_id": "7d4de8d69be7a3f661a04284ec96e7ca1c33bf0f5eeacf8740e8d37ff4d698a8"
+        },
+        {
+          "symbol": "PIZZA",
+          "contract": "0x3A7B077d815614ae51100fCBd7Fe1EE104Ae4b66",
+          "asset_id": "dd37f678dda586fad9b1daeae1f7c5c137ffa6d947e1ed5c7b4f3c430da80638"
         }
       ]
     }
