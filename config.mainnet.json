@@ -112,6 +112,11 @@
           "symbol": "BEPE",
           "contract": "0xBB5cBDAE23C5368557CC9A32337863eECf03cF9f",
           "asset_id": "ccda69ff6c44d687994efdbee30689be51d2347f739287ab4bb7b52344f8bf1d"
+        },
+        {
+          "symbol": "PEPE",
+          "contract": "0xC71690cd048F30F58Eee0d138fc19647bDaD79C7",
+          "asset_id": "ec9d874e152e888231024c72e391fc484e8b6a1cf744430a322a0544e207bf46"
         }
       ]
     }
