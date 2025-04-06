@@ -202,6 +202,11 @@
           "symbol": "PIZZA",
           "contract": "0x3A7B077d815614ae51100fCBd7Fe1EE104Ae4b66",
           "asset_id": "dd37f678dda586fad9b1daeae1f7c5c137ffa6d947e1ed5c7b4f3c430da80638"
+        },
+         {
+          "symbol": "SBF",
+          "contract": "0xCe031c942F63769F7ef5C67b337B126A983EA952",
+          "asset_id": "9f81bc1e1fbdc4027a08ef19923f3835c87311b70e897968c72fd20b2cc266b9"
         }
       ]
     }
