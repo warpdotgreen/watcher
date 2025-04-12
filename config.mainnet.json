@@ -202,6 +202,26 @@
           "symbol": "PIZZA",
           "contract": "0x3A7B077d815614ae51100fCBd7Fe1EE104Ae4b66",
           "asset_id": "dd37f678dda586fad9b1daeae1f7c5c137ffa6d947e1ed5c7b4f3c430da80638"
+        },
+        {
+          "symbol": "CAT",
+          "contract": "0x69adFc7C32e12b17B875087c217209B7e13bFff9",
+          "asset_id": "086287bab372e0fcf2ce36b43e4eab3e0ad0c6fcf6e1a326612e5240a2a8abb5"
+        },
+        {
+          "symbol": "DWB",
+          "contract": "0xc65151ac284f43A51F0A843F6A46930EfF0076c5",
+          "asset_id": "b0495abe70851d43d8444f785daa4fb2aaa8dae6312d596ee318d2b5834cc987"
+        },
+        {
+          "symbol": "PP",
+          "contract": "0xB5908e2ed3cfb5b6cfB0D5c7D8f4FAdA105861B2",
+          "asset_id": "84d31c80c619070ba45ce4dc5cc0bed2ae4341a0da1d69504e28243e6ccbef37"
+        },
+        {
+          "symbol": "SBF",
+          "contract": "0xCe031c942F63769F7ef5C67b337B126A983EA952",
+          "asset_id": "9f81bc1e1fbdc4027a08ef19923f3835c87311b70e897968c72fd20b2cc266b9"
         }
       ]
     }
