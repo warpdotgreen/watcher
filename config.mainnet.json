@@ -222,6 +222,51 @@
           "symbol": "SBF",
           "contract": "0xCe031c942F63769F7ef5C67b337B126A983EA952",
           "asset_id": "9f81bc1e1fbdc4027a08ef19923f3835c87311b70e897968c72fd20b2cc266b9"
+        },
+        {
+          "symbol": "GRC",
+          "contract": "0x61B5368b955450250EAd959C703aCE38943f88e5",
+          "asset_id": "79ca93817d91ea055c380393e1e3485b796f33afa5df8b7e2e754d16d527d6c5"
+        },
+        {
+          "symbol": "¢ni",
+          "contract": "0x28aEb37F911c1A9E9BD22fD5d333C1A7E0335183",
+          "asset_id": "9a272827e361f2171ba80332940fbe9d76c0932c41ef9925578bd30a8f587f8b"
+        },
+        {
+          "symbol": "COOKIES",
+          "contract": "0x90be21da4Ab0f141f224fD8C1cc73220dcFF9189",
+          "asset_id": "370b11ffa9ed2934fbc4137be95053d4a97b7b65e850af3edc0b58f088a0059c"
+        },
+        {
+          "symbol": "HonK",
+          "contract": "0xF6C04947A13481daAf4E8756B04f3D6bB7C30efF",
+          "asset_id": "048b1358f3b55a70c4db22114c2f52569c0398ba19e8212b8daf1cb25c90a641"
+        },
+        {
+          "symbol": "GOLD",
+          "contract": "0x0E6049B54cBb09da15Cd0b4578D45AEdd3150b8b",
+          "asset_id": "14142d7922b2487d1a145db198f7cc232a99a2798ec7da90279af45270e53465"
+        },
+        {
+          "symbol": "MOG",
+          "contract": "0xddadf2DD421819eeC424040a01bC76B7809879B6",
+          "asset_id": "d1adf97f603cdec4998a63eb8ffdd19480a60e20751c8ec8386283b1d86bf3f9"
+        },
+        {
+          "symbol": "$DUMB",
+          "contract": "0x9D1A9f442f194282fa47e8e45806375107b0a58e",
+          "asset_id": "42d298d75fb6400c7ea18f9b6a5a006580c3f43e47a625583cec4aafb9148a10"
+        },
+        {
+          "symbol": "SPACE",
+          "contract": "0xe5F66250807883DF33aF8973A86e5593F98F9E9E",
+          "asset_id": "d4f1f6d29e6392c477b84dc65a4379eaba570d29f7930895d89148ab5ed4b343"
+        },
+        {
+          "symbol": "COFFEE",
+          "contract": "0x3c03a9182C2810925D688f4a5420E1B8Ca7fFB58",
+          "asset_id": "14feb393ffb015b7becf2c1eea218e4fbfef0bb932366b793d7c5193a8197358"
         }
       ]
     }
