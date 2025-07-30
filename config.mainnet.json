@@ -267,6 +267,16 @@
           "symbol": "COFFEE",
           "contract": "0x3c03a9182C2810925D688f4a5420E1B8Ca7fFB58",
           "asset_id": "14feb393ffb015b7becf2c1eea218e4fbfef0bb932366b793d7c5193a8197358"
+        },
+        {
+          "symbol": "NeckCoin",
+          "contract": "0x359D5BFa1bb87598e2198EC139eE44D31Bd06FaC",
+          "asset_id": "1ad673d21799c9a224014ca71f9fe07cbc836fa23fa97b3be275d46d0b8bd9da"
+        },
+        {
+          "symbol": "GYATT",
+          "contract": "0xA4c74853BE20F750ae5BeAbcAF4BEa93e6eF9bF7",
+          "asset_id": "6188396ebb38365be3f7aad1d5c0310d1b6ce66180d8847e5da096e2ce33ba1a"
         }
       ]
     }
