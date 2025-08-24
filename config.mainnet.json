@@ -277,6 +277,21 @@
           "symbol": "GYATT",
           "contract": "0xA4c74853BE20F750ae5BeAbcAF4BEa93e6eF9bF7",
           "asset_id": "6188396ebb38365be3f7aad1d5c0310d1b6ce66180d8847e5da096e2ce33ba1a"
+        },
+        {
+          "symbol": "TIBET-NeckCoin-XCH",
+          "contract": "0x9c6CAC4E0b34D21C52202d10f72995C5574cDe64",
+          "asset_id": "ad737980cfd6a3ef70bb2e0867d23ed72a954de643d40b51d075cb413bf292cb"
+        },
+        {
+          "symbol": "NWO",
+          "contract": "0x0fB9e135419bc82D4Fe250bf2b79fBcbec212639",
+          "asset_id": "2ccbaed18bc14fcd3abe862c229ae4730e9c29cac46a5c0996e25b3d435327be"
+        },
+        {
+          "symbol": "DIG",
+          "contract": "0x4087fF5F00dAAFdd24F93b72a4BFdc3e6b5C1fa8",
+          "asset_id": "a406d3a9de984d03c9591c10d917593b434d5263cabe2b42f6b367df16832f81"
         }
       ]
     }
