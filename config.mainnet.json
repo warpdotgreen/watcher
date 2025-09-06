@@ -292,6 +292,26 @@
           "symbol": "DIG",
           "contract": "0x4087fF5F00dAAFdd24F93b72a4BFdc3e6b5C1fa8",
           "asset_id": "a406d3a9de984d03c9591c10d917593b434d5263cabe2b42f6b367df16832f81"
+        },
+        {
+          "symbol": "CASTER",
+          "contract": "0x09Aa909Eea859f712f2Ae3dd1872671D2363f6f4",
+          "asset_id": "a09af8b0d12b27772c64f89cf0d1db95186dca5b1871babc5108ff44f36305e6"
+        },
+        {
+          "symbol": "SP",
+          "contract": "0x145F14b876051DC443dd18D5f8a7C48c5db75847",
+          "asset_id": "eb2155a177b6060535dd8e72e98ddb0c77aea21fab53737de1c1ced3cb38e4c4"
+        },
+        {
+          "symbol": "MANA",
+          "contract": "0x4cE68125983527D1e289a0C1c70464B4bb8932ac",
+          "asset_id": "1653a1df583f3ae6a822ab214b74d2a08fb4309025d54f2db140e5e6bc06e9da"
+        },
+        {
+          "symbol": "MAFFF",
+          "contract": "0x1e0f022E43464E1bA9BbEa4A3D1ac1dB25561044",
+          "asset_id": "ea6da19358a08fc000002985c8d1ffffc687346aadf2e9a0d98e49f567abccba"
         }
       ]
     }
