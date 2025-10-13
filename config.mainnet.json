@@ -292,6 +292,11 @@
           "symbol": "DIG",
           "contract": "0x4087fF5F00dAAFdd24F93b72a4BFdc3e6b5C1fa8",
           "asset_id": "a406d3a9de984d03c9591c10d917593b434d5263cabe2b42f6b367df16832f81"
+        },
+        {
+          "symbol": "Plank",
+          "contract": "0x66B55cBbBDd3a96C94220DD4C7A1f47b4213e285",
+          "asset_id": "7c1766edb4c48c6a692715def4343af1ff8d68ab7db7acf93f8e4658329294d7"
         }
       ]
     }
