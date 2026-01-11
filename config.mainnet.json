@@ -297,6 +297,11 @@
           "symbol": "Plank",
           "contract": "0x66B55cBbBDd3a96C94220DD4C7A1f47b4213e285",
           "asset_id": "7c1766edb4c48c6a692715def4343af1ff8d68ab7db7acf93f8e4658329294d7"
+        },
+        {
+          "symbol": "BYC",
+          "contract": "0x16b13A47B0C535EFaE58675e0657d3C22471cdA8",
+          "asset_id": "ae1536f56760e471ad85ead45f00d680ff9cca73b8cc3407be778f1c0c606eac"
         }
       ]
     }
