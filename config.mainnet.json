@@ -65,6 +65,11 @@
           "symbol": "EURC",
           "contract": "0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42",
           "asset_id": "31ffd54c5b38bb33352dc0be0ebf9cf4f29a6329156dd4811d6f4254f85c8200"
+        },
+        {
+          "symbol": "EURe",
+          "contract": "0xbf6e2966A9C3D99C9E4D069E04f7Bdb9C8aa762C",
+          "asset_id": "8332a8ed5e077f562f2743d7d680fb36a392010fab5c2116d04f2a253c9a3915"
         }
       ]
     },
