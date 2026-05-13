@@ -317,6 +317,11 @@
           "symbol": "WESO",
           "contract": "0xb7Cf6834259fE7331924Bf96Ae88CFD6269bfEB0",
           "asset_id": "3057c3eca4087abbc15d75b29b56e523a9f85cf4476802e137c645cf7d5d9f5f"
+        },
+        {
+          "symbol": "$HORSE",
+          "contract": "0x827fc57Bc514578E8280cEE73f5e948D306aF074",
+          "asset_id": "1efff18fedcdb63818a1b41ab3e977707bc314a090e7ea5db396a56095290604"
         }
       ]
     }
