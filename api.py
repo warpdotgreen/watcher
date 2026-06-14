@@ -43,14 +43,14 @@ async def read_messages(
     to_source_block_number: Optional[int] = None,
     from_destination_block_number: Optional[int] = None,
     to_destination_block_number: Optional[int] = None,
-    order_by: str = Query("id", pattern="^(id|source_block_number|destination_block_number)$"),
+    order_by: str = Query("id", pattern="^(id|source_block_number|destination_block_number|destination_timestamp)$"),
     sort: str = Query("desc", pattern="^(asc|desc)$"),
     source_chain: Optional[str] = None,
     destination_chain: Optional[str] = None,
     status: Optional[MessageStatus] = None,
     source: Optional[str] = None,
     destination: Optional[str] = None,
-    only_parsed: bool = Query(False, alias="onlyParsed"),
+    only_parsed: bool = Query(False),
 ):
     db: Session = setup_database()
     query = db.query(Message)
@@ -81,6 +81,8 @@ async def read_messages(
             Message.parsed != "",
             Message.parsed != "{}",
         )
+    if order_by == "destination_timestamp":
+        query = query.filter(Message.destination_timestamp.isnot(None))
     
     order_column = getattr(Message, order_by)
     query = query.order_by(order_column.desc() if sort == "desc" else order_column.asc())
