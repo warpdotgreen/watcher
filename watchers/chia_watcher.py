@@ -73,6 +73,10 @@ class ChiaWatcher:
     def getDb(self):
         return setup_database()
 
+    async def get_block_timestamp(self, node: FullNodeRpcClient, height: int) -> int:
+        block = await node.get_block_record_by_height(height)
+        return int(block.timestamp)
+
     def createMessageFromMemo(
             self,
             db,
@@ -354,7 +358,9 @@ class ChiaWatcher:
             
             self.log(f"Updating status of message {source_chain.decode()}-{nonce.hex()} to 'RECEIVED'")
             msg.destination_block_number = coin_record.spent_block_index
-            msg.destination_timestamp = coin_record.timestamp
+            msg.destination_timestamp = await self.get_block_timestamp(
+                node, coin_record.spent_block_index
+            )
             msg.destination_transaction_hash = coin_record.coin.name()
             msg.status = MessageStatus.RECEIVED
             db.commit()
