@@ -70,6 +70,11 @@
           "symbol": "EURe",
           "contract": "0xbf6e2966A9C3D99C9E4D069E04f7Bdb9C8aa762C",
           "asset_id": "8332a8ed5e077f562f2743d7d680fb36a392010fab5c2116d04f2a253c9a3915"
+        },
+        {
+          "symbol": "Wizard | 🧙‍♂️💸",
+          "contract": "0x39916e508e389FBB4dDC3d1a38a5801f4eE253c7",
+          "asset_id": "4e06e576de21497f13da17908b8dd80ff94df717632d2ff7c703144c5d549385"
         }
       ]
     },
@@ -322,6 +327,96 @@
           "symbol": "$HORSE",
           "contract": "0x827fc57Bc514578E8280cEE73f5e948D306aF074",
           "asset_id": "1efff18fedcdb63818a1b41ab3e977707bc314a090e7ea5db396a56095290604"
+        },
+        {
+          "symbol": "Wizard | ✨❤️‍🔥🧙‍♂️",
+          "contract": "0x09Aa909Eea859f712f2Ae3dd1872671D2363f6f4",
+          "asset_id": "a09af8b0d12b27772c64f89cf0d1db95186dca5b1871babc5108ff44f36305e6"
+        },
+        {
+          "symbol": "Wizard | 🪄⚡️",
+          "contract": "0x145F14b876051DC443dd18D5f8a7C48c5db75847",
+          "asset_id": "eb2155a177b6060535dd8e72e98ddb0c77aea21fab53737de1c1ced3cb38e4c4"
+        },
+        {
+          "symbol": "Wizard | 💎",
+          "contract": "0xb43ba3fD8ac8b16ED52CFBE72738967C2AD9cC03",
+          "asset_id": "e335003c6d59aaaabe27eeeaf8a7b1308765f6bc9492a0b16394f50dec6bdcb7"
+        },
+        {
+          "symbol": "Wizard | BYC-🧙‍♂️💸",
+          "contract": "0x39916e508e389FBB4dDC3d1a38a5801f4eE253c7",
+          "asset_id": "ae1536f56760e471ad85ead45f00d680ff9cca73b8cc3407be778f1c0c606eac"
+        },
+        {
+          "symbol": "Wizard | ❤️",
+          "contract": "0x817cAb331aaA4c24b4e32024FCa093AD40CBa208",
+          "asset_id": "70010d83542594dd44314efbae75d82b3d9ae7d946921ed981a6cd08f0549e50"
+        },
+        {
+          "symbol": "Wizard | 🌱",
+          "contract": "0xd1b771CB462a4B0e4d56Bb68b4bF832994CC8820",
+          "asset_id": "ab558b1b841365a24d1ff2264c55982e55664a8b6e45bc107446b7e667bb463b"
+        },
+        {
+          "symbol": "Wizard | 🍕",
+          "contract": "0x84070f2c685b3d4B63c66f0B13fB83Fa6ccb4035",
+          "asset_id": "dd37f678dda586fad9b1daeae1f7c5c137ffa6d947e1ed5c7b4f3c430da80638"
+        },
+        {
+          "symbol": "Wizard | 🪙",
+          "contract": "0xA70E687428a5Ea9389B7803e722271141532E77C",
+          "asset_id": "1e4e33b858823a681f0377efe9afa77160f82b06e7dd4ba094c0d360dc430795"
+        },
+        {
+          "symbol": "Wizard | 🍫🌮",
+          "contract": "0xBaB8a1AD71710d62e7E4c2F56c299422C6187c38",
+          "asset_id": "8df67763ad273f4a08f8f19f8a172d80b38ad940f32fe20b0b2ed3d665edf575"
+        },
+        {
+          "symbol": "Wizard | 🧙‍♂️",
+          "contract": "0x4cE68125983527D1e289a0C1c70464B4bb8932ac",
+          "asset_id": "1653a1df583f3ae6a822ab214b74d2a08fb4309025d54f2db140e5e6bc06e9da"
+        },
+        {
+          "symbol": "Wizard | 🍊",
+          "contract": "0xBC10aAdB49203BBa53e10C17E10EaD3c752c385A",
+          "asset_id": "e816ee18ce2337c4128449bc539fbbe2ecfdd2098c4e7cab4667e223c3bdc23d"
+        },
+        {
+          "symbol": "Wizard | 🌳",
+          "contract": "0x21cc862b51865ae3b71482c1351dcb6badd19315",
+          "asset_id": "a84a40fec6d65fc97ea42e46ff7b2ea66ad66ab49b02d1673539d91d54fabae2"
+        },
+        {
+          "symbol": "Wizard | 🐯🩸",
+          "contract": "0xD999c5E89018a28deA05607837DD5DD6de26d907",
+          "asset_id": "95430751e3894b48820b7da497f04abd0e46fe6d982fa98daf174ff1e35159bd"
+        },
+        {
+          "symbol": "Wizard | 🛸",
+          "contract": "0x4bfFe8111138513EC0BeF615eD3D05aCf4D76596",
+          "asset_id": "cb0ede34fda366f9733f602c82ecf5c5e00f0710bf5a03e40afe54239eca6ccd"
+        },
+        {
+          "symbol": "Wizard | ♞",
+          "contract": "0xf628fD48BB4A4903DdCdBb89b814B5484456fc4E",
+          "asset_id": "c0eb7cc73ef2e789a7b9cf7c8c27185beb2ff5fdf2997da28a6b9b3714e4034d"
+        },
+        {
+          "symbol": "Wizard | MAFFF",
+          "contract": "0x1e0f022E43464E1bA9BbEa4A3D1ac1dB25561044",
+          "asset_id": "ea6da19358a08fc000002985c8d1ffffc687346aadf2e9a0d98e49f567abccba"
+        },
+        {
+          "symbol": "Wizard | IYKYK",
+          "contract": "0x28Bc22d46d42cdba838F86E018F560c5080E3F6A",
+          "asset_id": "623c352de013e561656678f57058f7728aab631aa3aaab685fbe7918cea9b001"
+        },
+        {
+          "symbol": "Wizard | $BITCOIN",
+          "contract": "0x801003CccD1A4C6079c71D18C7Dbe8375589B2ed",
+          "asset_id": "46ec3dc25b32221e88fad0ee20f84f7dfff13dbee844497232cb08c8df532b15"
         }
       ]
     }
