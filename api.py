@@ -49,7 +49,8 @@ async def read_messages(
     destination_chain: Optional[str] = None,
     status: Optional[MessageStatus] = None,
     source: Optional[str] = None,
-    destination: Optional[str] = None
+    destination: Optional[str] = None,
+    only_parsed: bool = Query(False, alias="onlyParsed"),
 ):
     db: Session = setup_database()
     query = db.query(Message)
@@ -74,6 +75,12 @@ async def read_messages(
         query = query.filter(Message.source == bytes.fromhex(source))
     if destination:
         query = query.filter(Message.destination == bytes.fromhex(destination))
+    if only_parsed:
+        query = query.filter(
+            Message.parsed.isnot(None),
+            Message.parsed != "",
+            Message.parsed != "{}",
+        )
     
     order_column = getattr(Message, order_by)
     query = query.order_by(order_column.desc() if sort == "desc" else order_column.asc())
