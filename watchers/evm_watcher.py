@@ -568,6 +568,8 @@ class EVMWatcher:
                 f"Unexpected nonce {nonce_int} (expected {self.next_nonce}); re-syncing..."
             )
             await self.catchUpSentMessages(w3, db, portal)
+
+        if nonce_int < self.next_nonce:
             return
 
         await self.processSentEvent(w3, db, event)
