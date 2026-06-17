@@ -352,9 +352,9 @@ class ChiaWatcher:
                 )).first()
 
                 cnt += 1
-                if cnt >= 5:
-                    self.log("Something's not right with this message - exiting...")
-                    sys.exit(1)
+                # if cnt >= 60:
+                #     self.log("Something's not right with this message - exiting...")
+                #     sys.exit(1)
             
             self.log(f"Updating status of message {source_chain.decode()}-{nonce.hex()} to 'RECEIVED'")
             msg.destination_block_number = coin_record.spent_block_index
