@@ -6,7 +6,7 @@ import logging
 from typing import List
 from config import Network
 from web3 import AsyncWeb3
-from web3.providers import AsyncHTTPProvider
+from watchers.http_rpc import ReadingHTTPProvider
 from sqlalchemy import and_, func, or_
 from watchers.cli_policy import evaluate_chia_message_policy, load_block_spends
 from commands.policy_runtime import is_rpc_rate_limited
@@ -94,7 +94,7 @@ class ChiaWatcher:
             return None
         client = self._evm_web3.get(key)
         if client is None:
-            client = AsyncWeb3(AsyncHTTPProvider(url))
+            client = AsyncWeb3(ReadingHTTPProvider(url))
             self._evm_web3[key] = client
         return client
 

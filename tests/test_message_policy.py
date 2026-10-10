@@ -14,6 +14,7 @@ from chia.types.coin_spend import CoinSpend
 from config import Network, NetworkType
 from db import ChiaPortalState, KeyValueEntry, Message, MessageStatus, PolicyReject, setup_database
 from watchers.cli_policy import BridgeRoutes, PolicyResult
+from commands.policy_runtime import is_rpc_rate_limited
 from commands.spend_policy import EvmRoute
 from watchers.chia_watcher import ChiaWatcher
 from watchers.evm_watcher import EVMWatcher
@@ -1204,6 +1205,41 @@ class RejectMarkerTests(unittest.TestCase):
             chia_db.close()
             os.remove(path)
             os.remove(chia_path)
+
+    def test_http_error_log_includes_body_and_403_is_not_retried(self):
+        from watchers.http_rpc import RpcHttpError
+
+        watcher = _evm_watcher()
+        body = '{"jsonrpc":"2.0","error":{"code":-32005,"message":"Too Many Requests"}}'
+        limited = RpcHttpError(429, "Too Many Requests", body)
+        forbidden = RpcHttpError(
+            403,
+            "Forbidden",
+            '{"jsonrpc":"2.0","error":{"code":-32005,"message":"daily request count exceeded, request rate limited"}}',
+        )
+        self.assertIn(body, watcher.format_error(limited))
+        self.assertNotIn("RequestInfo", watcher.format_error(limited))
+        self.assertTrue(watcher.is_transient_rpc_error(limited))
+        self.assertFalse(watcher.is_transient_rpc_error(forbidden))
+        self.assertTrue(watcher.is_transient_rpc_error(TimeoutError("timed out")))
+        watcher.rpc_url = "https://mainnet.infura.io/v3/secretkey"
+        leaked = RpcHttpError(429, "Too Many Requests", "see " + watcher.rpc_url)
+        self.assertNotIn("secretkey", watcher.format_error(leaked))
+
+    def test_rate_limit_backoff_grows_and_then_resets(self):
+        chia, db, path, _node, _coin_record, _bridging = _open_chia()
+        try:
+            self.assertTrue(is_rpc_rate_limited(SimpleNamespace(status=429, message="Too Many Requests")))
+            self.assertFalse(is_rpc_rate_limited(SimpleNamespace(status=500, message="no")))
+            self.assertEqual(
+                [chia.retry_delay_seconds("rpc rate limited") for _ in range(12)],
+                [5, 10, 15, 20, 30, 45, 60, 120, 180, 240, 300, 300],
+            )
+            self.assertEqual(chia.retry_delay_seconds("missing WrappedCAT bytecode or views"), 30)
+            self.assertEqual(chia.retry_delay_seconds("rpc rate limited"), 5)
+        finally:
+            db.close()
+            os.remove(path)
 
     def test_low_toll_coin_is_not_logged_on_the_next_pass(self):
         chia, _db, path, _node, _coin_record, _bridging = _open_chia()

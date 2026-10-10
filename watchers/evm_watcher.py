@@ -5,7 +5,8 @@ import os
 import re
 from aiohttp import ClientTimeout
 from web3 import AsyncWeb3, Web3
-from web3.providers import WebsocketProviderV2, AsyncHTTPProvider
+from web3.providers import WebsocketProviderV2
+from watchers.http_rpc import ReadingHTTPProvider
 from typing import Any
 from config import Network
 from sqlalchemy import and_, or_
@@ -80,20 +81,36 @@ class EVMWatcher:
 
         return url
 
-    def getHttpProvider(self) -> AsyncHTTPProvider:
-        return AsyncHTTPProvider(
+    def getHttpProvider(self) -> ReadingHTTPProvider:
+        return ReadingHTTPProvider(
             self.rpc_url,
             request_kwargs={"timeout": ClientTimeout(total=RPC_REQUEST_TIMEOUT)},
         )
 
-    def format_error(self, error: Exception) -> str:
-        msg = repr(error)
+    def redact(self, message: str) -> str:
         for secret in (self.rpc_url, self.ws_rpc_url, self.getWebsocketUrl()):
             if secret:
-                msg = msg.replace(secret, "[redacted]")
-        msg = re.sub(r"/v3/[a-zA-Z0-9]+", "/v3/[redacted]", msg)
-        msg = re.sub(r"/v2/[a-zA-Z0-9]+", "/v2/[redacted]", msg)
-        return msg
+                message = message.replace(secret, "[redacted]")
+        message = re.sub(r"/v3/[a-zA-Z0-9]+", "/v3/[redacted]", message)
+        message = re.sub(r"/v2/[a-zA-Z0-9]+", "/v2/[redacted]", message)
+        return message
+
+    def format_error(self, error: Exception) -> str:
+        status = getattr(error, "status", None)
+        if isinstance(status, int):
+            reason = getattr(error, "reason", None) or getattr(error, "message", "") or ""
+            body = getattr(error, "body", "") or ""
+            if not isinstance(body, str):
+                body = ""
+            text = f"HTTP {status} {reason}".rstrip()
+            if body:
+                text = f"{text}: {body}"
+        else:
+            text = f"{type(error).__name__}: {error}"
+        text = self.redact(text).replace("\n", " ")
+        if len(text) > 800:
+            text = text[:800]
+        return text
 
     def getDb(self):
         return setup_database()
@@ -142,16 +159,18 @@ class EVMWatcher:
         ) and not self.is_head_block_error(error)
 
     def is_transient_rpc_error(self, error: Exception) -> bool:
-        text = self.format_error(error).lower()
+        status = getattr(error, "status", None)
+        if isinstance(status, int):
+            return status in (408, 429, 500, 502, 503, 504)
+        text = f"{type(error).__name__}: {error}".lower()
         return any(
             phrase in text
             for phrase in (
                 "timeout",
                 "timed out",
-                "429",
                 "too many requests",
-                "connection",
-                "reset",
+                "connection reset",
+                "connection refused",
                 "503",
                 "502",
                 "504",
@@ -760,7 +779,8 @@ class EVMWatcher:
             await ws_w3.eth.block_number
 
     async def runSubscriptionSession(self) -> None:
-        http_w3 = AsyncWeb3(self.getHttpProvider())
+        http_provider = self.getHttpProvider()
+        http_w3 = AsyncWeb3(http_provider)
         db = self.getDb()
         try:
             self.loadStateFromDb(db)
@@ -838,6 +858,7 @@ class EVMWatcher:
                             pass
         finally:
             db.close()
+            await http_provider.aclose()
 
     async def logSubscriptionWatcher(self):
         while True:
