@@ -259,6 +259,7 @@ class MessagePolicyTests(unittest.TestCase):
         try:
             async def fake_policy(**kwargs):
                 fake_policy.calls += 1
+                fake_policy.kwargs = kwargs
                 return result
 
             fake_policy.calls = 0
@@ -267,6 +268,7 @@ class MessagePolicyTests(unittest.TestCase):
                 moved = await watcher.indexSentEvent(None, db, event)
 
             self.assertEqual(fake_policy.calls, 1)
+            self.assertIs(fake_policy.kwargs["verify_balance_diff"], False)
             self.assertEqual(moved, advanced)
             self.assertEqual(watcher.next_nonce, 2 if advanced else 1)
             if advanced:

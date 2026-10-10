@@ -504,6 +504,7 @@ class EVMWatcher:
             contents=contents,
             block_number=int(event.blockNumber),
             tx_hash=self._tx_hash(event.transactionHash),
+            verify_balance_diff=False,
         )
         if result.kind in ("retry", "hold"):
             self.log(
