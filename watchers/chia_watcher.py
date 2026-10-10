@@ -5,7 +5,10 @@ import aiohttp
 import logging
 from typing import List
 from config import Network
-from sqlalchemy import and_
+from web3 import AsyncWeb3
+from web3.providers import AsyncHTTPProvider
+from sqlalchemy import and_, func, or_
+from watchers.cli_policy import evaluate_chia_message_policy, load_block_spends
 from chia.types.coin_record import CoinRecord
 from chia.types.blockchain_format.coin import Coin
 from chia.consensus.block_record import BlockRecord
@@ -15,7 +18,16 @@ from chia.rpc.full_node_rpc_client import FullNodeRpcClient
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.blockchain_format.program import INFINITE_COST
 from chia.util.condition_tools import conditions_dict_for_solution
-from db import join_message_contents, Message, MessageStatus, setup_database, ChiaPortalState
+from db import (
+    join_message_contents,
+    Message,
+    MessageStatus,
+    setup_database,
+    ChiaPortalState,
+    is_message_parsed,
+    find_policy_reject,
+    record_policy_reject,
+)
 
 class HTTPFullNodeRpcClient(FullNodeRpcClient):
     def __init__(self, base_url: str):
@@ -51,7 +63,7 @@ class ChiaWatcher:
     tasks: list
     nodes: List[HTTPFullNodeRpcClient]
 
-    def __init__(self, network: Network, parse_message_func: any):
+    def __init__(self, network: Network, parse_message_func: any, routes, evm_rpc_urls=None):
         self.parse_message_func = parse_message_func
         self.network_id = network.id
         self.rpc_url = network.rpc_url
@@ -59,8 +71,43 @@ class ChiaWatcher:
         self.message_toll = network.message_toll
         self.portal_launcher_id = bytes.fromhex(network.portal_launcher_id)
         self.bridging_puzzle_hash = bytes.fromhex(network.bridging_puzzle_hash)
+        self.routes = routes
+        self.evm_rpc_urls = evm_rpc_urls or {}
+        self._evm_web3 = {}
+        self.skipped_coin_ids = set()
         self.tasks = []
         self.nodes = []
+
+    def web3_for_chain(self, chain):
+        if isinstance(chain, (bytes, bytearray)):
+            try:
+                key = chain.decode()
+            except UnicodeDecodeError:
+                return None
+        else:
+            key = str(chain)
+        url = self.evm_rpc_urls.get(key)
+        if not url:
+            return None
+        client = self._evm_web3.get(key)
+        if client is None:
+            client = AsyncWeb3(AsyncHTTPProvider(url))
+            self._evm_web3[key] = client
+        return client
+
+    def note_coin_outcome(self, nonce: bytes, kind: str, skip_coin_ids: list) -> bool:
+        """True when this coin must be left for the next pass.
+
+        retry and hold are not added to skip_coin_ids. reject and accept are.
+        """
+        if kind in ("retry", "hold"):
+            self.log(f"Policy {kind} for {nonce.hex()}; leaving it for the next pass")
+            return True
+        self.log(f"Marking {nonce.hex()} as processed")
+        skip_coin_ids.append(nonce)
+        if kind != "accept":
+            self.skipped_coin_ids.add(nonce)
+        return False
 
     def log(self, message):
         logging.info(f"[{self.network_id} watcher] - {message}")
@@ -76,6 +123,14 @@ class ChiaWatcher:
     async def get_block_timestamp(self, node: FullNodeRpcClient, height: int) -> int:
         block = await node.get_block_record_by_height(height)
         return int(block.timestamp)
+
+    def _parse_and_commit(self, db, message):
+        try:
+            self.parse_message_func(db, message)
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
 
     def createMessageFromMemo(
             self,
@@ -108,7 +163,11 @@ class ChiaWatcher:
             Message.source_chain == self.network_id.encode()
         )).first()
         if msg_in_db is not None:
-            self.log(f"Coin {self.network_id}-{nonce.hex()}: message already in db; skipping")
+            if is_message_parsed(msg_in_db.parsed):
+                self.log(f"Coin {self.network_id}-{nonce.hex()}: message already in db; skipping")
+                return
+            self._parse_and_commit(db, msg_in_db)
+            self.log(f"Message {self.network_id}-{nonce.hex()} parsed.")
             return
         
         msg = Message(
@@ -126,22 +185,38 @@ class ChiaWatcher:
             destination_transaction_hash = None,
             status = MessageStatus.SENT
         )
-        msg = self.parse_message_func(db, msg)
         db.add(msg)
         db.commit()
+        self._parse_and_commit(db, msg)
         self.log(f"Message {self.network_id}-{nonce.hex()} added to db.")
 
 
-    async def processCoinRecord(self, db, node: FullNodeRpcClient, coin_record: CoinRecord):
-        parent_record = await node.get_coin_record_by_name(coin_record.coin.parent_coin_info)
-        while parent_record is None:
-            await asyncio.sleep(5)
-            parent_record = await node.get_coin_record_by_name(coin_record.coin.parent_coin_info)
+    async def processCoinRecord(self, db, node: FullNodeRpcClient, coin_record: CoinRecord) -> str:
+        started_height = coin_record.confirmed_block_index
+        child_id = coin_record.coin.name()
+        parent_id = coin_record.coin.parent_coin_info
+        parent_record = None
+        parent_spend = None
 
-        parent_spend = await node.get_puzzle_and_solution(
-            coin_record.coin.parent_coin_info,
-            parent_record.spent_block_index
-        )
+        while parent_spend is None:
+            child = await node.get_coin_record_by_name(child_id)
+            if child is None or child.confirmed_block_index != started_height:
+                self.log(
+                    f"Coin {self.network_id}-0x{child_id.hex()}: possible reorg; re-processing"
+                )
+                return "retry"
+
+            parent_record = await node.get_coin_record_by_name(parent_id)
+            spent_height = parent_record.spent_block_index if parent_record is not None else 0
+            if spent_height:
+                parent_spend = await node.get_puzzle_and_solution(parent_id, spent_height)
+            if parent_spend is not None:
+                break
+
+            self.log(
+                f"Coin {self.network_id}-0x{child_id.hex()}: parent coin record or spend not found; retrying in 5s"
+            )
+            await asyncio.sleep(5)
 
         try:
             _, output = parent_spend.puzzle_reveal.run_with_cost(INFINITE_COST, parent_spend.solution)
@@ -152,11 +227,44 @@ class ChiaWatcher:
 
                     if created_ph == self.bridging_puzzle_hash and created_amount >= self.message_toll:
                         coin = Coin(parent_record.coin.name(), created_ph, created_amount)
+                        if coin.name() != coin_record.coin.name():
+                            continue
                         try:
                             memo = condition.at('rrrf')
                         except:
                             self.log(f"ERROR! - Coin {self.network_id}-{coin.name().hex()} - error when parsing memo; skipping")
-                            continue
+                            return "reject"
+
+                        try:
+                            result = await evaluate_chia_message_policy(
+                                bridging_coin=coin,
+                                parent_spend=parent_spend,
+                                routes=self.routes,
+                                node=node,
+                                block_spends=await load_block_spends(
+                                    node, parent_record.spent_block_index
+                                ),
+                                web3_for_chain=self.web3_for_chain,
+                                evm_block_number=None,
+                            )
+                        except Exception as exc:
+                            self.log(
+                                f"Coin {self.network_id}-{coin.name().hex()}: policy error ({exc}); will retry"
+                            )
+                            return "retry"
+
+                        if result.kind in ("retry", "hold"):
+                            self.log(
+                                f"Coin {self.network_id}-{coin.name().hex()}: policy {result.kind} ({result.reason})"
+                            )
+                            return result.kind
+                        if result.kind != "accept":
+                            self.log(
+                                f"Coin {self.network_id}-{coin.name().hex()}: policy {result.kind} ({result.reason}); not indexing"
+                            )
+                            if result.kind == "reject":
+                                record_policy_reject(db, self.network_id.encode(), coin.name())
+                            return "reject"
 
                         try:
                             self.createMessageFromMemo(
@@ -168,12 +276,17 @@ class ChiaWatcher:
                                 memo
                             )
                         except Exception as e:
-                            self.log(f"ERROR - Coin {self.network_id}-{coin.name().hex()} - error when parsing memo to create message; skipping even though we shouldn't")
-                            print(e)
+                            self.log(
+                                f"Coin {self.network_id}-{coin.name().hex()}: error creating message ({e}); will retry"
+                            )
+                            return "retry"
+                        return "accept"
                     else:
                         self.log(f"Coin {self.network_id}-{coin_record.coin.name().hex()}: toll not high enough; skipping")
         except Exception:
             self.log(f"ERROR - Coin {self.network_id}-{coin_record.coin.name().hex()} - error when parsing output; skipping")
+            return "reject"
+        return "reject"
 
 
     async def get_current_height(self, node: FullNodeRpcClient) -> int:
@@ -186,20 +299,38 @@ class ChiaWatcher:
 
 
 
+    def _sent_scan_start(self, db) -> int:
+        """Height to scan from.
+
+        A stored row whose parsed field is empty still needs its volume commit.
+        Scanning from the next height would leave that coin behind forever.
+        """
+        chain = self.network_id.encode()
+        unparsed_height = db.query(func.min(Message.source_block_number)).filter(
+            Message.source_chain == chain,
+            or_(
+                Message.parsed.is_(None),
+                Message.parsed == "",
+                Message.parsed == "{}",
+            ),
+        ).scalar()
+        if unparsed_height is not None:
+            return unparsed_height
+
+        last_synced_height = db.query(Message.source_block_number).filter(
+            Message.source_chain == chain
+        ).order_by(Message.source_block_number.desc()).first()
+        if last_synced_height is None:
+            return self.min_height
+        return last_synced_height[0] + 1
+
     async def sentMessageWatcher(self):
         node = self.getNode()
         db = self.getDb()
 
         while True:
             try:
-                last_synced_height = db.query(Message.source_block_number).filter(
-                    Message.source_chain == self.network_id.encode()
-                ).order_by(Message.source_block_number.desc()).first()
-
-                if last_synced_height is None:
-                    last_synced_height = self.min_height
-                else:
-                    last_synced_height = last_synced_height[0] + 1
+                last_synced_height = self._sent_scan_start(db)
 
                 unfiltered_coin_records = await node.get_coin_records_by_puzzle_hash(
                     self.bridging_puzzle_hash,
@@ -214,8 +345,9 @@ class ChiaWatcher:
 
                 # because get_coin_records_by_puzzle_hash can be quite resource exensive, we'll process all results
                 # instead of only one and calling again
-                skip_coin_ids = []
+                skip_coin_ids = list(self.skipped_coin_ids)
                 reorg = False
+                retry_later = False
 
                 while not reorg:
                     earliest_unprocessed_coin_record = None
@@ -234,7 +366,12 @@ class ChiaWatcher:
                             Message.source_chain == self.network_id.encode()
                         )).first()
                         if message_in_db is not None:
-                            self.log(f"Nonce {nonce.hex()} already in db; skipping")
+                            if is_message_parsed(message_in_db.parsed):
+                                self.log(f"Nonce {nonce.hex()} already in db; skipping")
+                                skip_coin_ids.append(nonce)
+                                continue
+                            self._parse_and_commit(db, message_in_db)
+                            self.log(f"Nonce {nonce.hex()} parsed.")
                             skip_coin_ids.append(nonce)
                             continue
 
@@ -257,11 +394,17 @@ class ChiaWatcher:
                         break
 
                     self.log(f"Processing coin record for nonce {earliest_unprocessed_coin_record.coin.name().hex()}...")
-                    await self.processCoinRecord(db, node, earliest_unprocessed_coin_record)
+                    kind = await self.processCoinRecord(db, node, earliest_unprocessed_coin_record)
 
                     nonce = earliest_unprocessed_coin_record.coin.name()
-                    self.log(f"Marking {nonce.hex()} as processed")
-                    skip_coin_ids.append(nonce)
+                    if self.note_coin_outcome(nonce, kind, skip_coin_ids):
+                        retry_later = True
+                        break
+
+                if retry_later:
+                    self.log("Policy asked to retry a coin; checking again in 30s...")
+                    await asyncio.sleep(30)
+                    continue
 
                 if not reorg:
                     self.log("Processed all coin records; checking again in 30s...")
@@ -343,6 +486,11 @@ class ChiaWatcher:
             )).first()
             cnt = 0
             while msg is None:
+                if find_policy_reject(db, source_chain, nonce) is not None:
+                    self.log(
+                        f"Message {source_chain.decode()}-{nonce.hex()} was rejected; skipping"
+                    )
+                    break
                 self.log(f"Message {source_chain.decode()}-{nonce.hex()} not found in db; waiting 10s for other threads to catch up")
                 await asyncio.sleep(10)
                 msg = db.query(Message).filter(and_(
@@ -355,7 +503,10 @@ class ChiaWatcher:
                 # if cnt >= 60:
                 #     self.log("Something's not right with this message - exiting...")
                 #     sys.exit(1)
-            
+
+            if msg is None:
+                continue
+
             self.log(f"Updating status of message {source_chain.decode()}-{nonce.hex()} to 'RECEIVED'")
             msg.destination_block_number = coin_record.spent_block_index
             msg.destination_timestamp = await self.get_block_timestamp(

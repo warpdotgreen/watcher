@@ -2,6 +2,7 @@ from parsers.erc20bridge import ERC20BridgeParser
 from parsers.catbridge import CATBridgeParser
 from watchers.chia_watcher import ChiaWatcher
 from watchers.evm_watcher import EVMWatcher
+from watchers.cli_policy import build_bridge_routes
 from config import Config, NetworkType
 from dotenv import load_dotenv
 import asyncio
@@ -37,13 +38,28 @@ def watch():
 
         return message
 
+    routes = build_bridge_routes(config)
+    evm_rpc_urls = {
+        network.id: network.rpc_url
+        for network in config.networks
+        if network.type == NetworkType.EVM
+    }
     watchers = []
 
     for network in config.networks:
         if network.type == NetworkType.CHIA:
-            watchers.append(ChiaWatcher(network, parse_message_func=parse_message))
+            watchers.append(ChiaWatcher(
+                network,
+                parse_message_func=parse_message,
+                routes=routes,
+                evm_rpc_urls=evm_rpc_urls,
+            ))
         elif network.type == NetworkType.EVM:
-            watchers.append(EVMWatcher(network, parse_message_func=parse_message))
+            watchers.append(EVMWatcher(
+                network,
+                parse_message_func=parse_message,
+                routes=routes,
+            ))
 
     loop = asyncio.get_event_loop()
     

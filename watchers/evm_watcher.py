@@ -8,12 +8,26 @@ from web3 import AsyncWeb3, Web3
 from web3.providers import WebsocketProviderV2, AsyncHTTPProvider
 from typing import Any
 from config import Network
-from sqlalchemy import and_
-from db import setup_database, Message, MessageStatus, join_message_contents, increment_key_value
+from sqlalchemy import and_, or_
+from db import (
+    setup_database,
+    Message,
+    MessageStatus,
+    join_message_contents,
+    increment_key_value,
+    is_message_parsed,
+    find_policy_reject,
+    record_policy_reject,
+)
+from watchers.cli_policy import evaluate_evm_message_policy
 
 # Blocks rescanned on catch-up so a short reorg cannot leave a gap.
 REORG_SAFETY_MARGIN = 64
 RPC_REQUEST_TIMEOUT = 120
+# A retry or hold returns from catch-up and leaves the cursor put. The
+# subscription does not deliver that nonce again, so re-run catch-up on this
+# interval for as long as the session is up.
+SENT_CATCHUP_RETRY_SECONDS = 30
 
 MESSAGE_SENT_TOPIC = Web3.keccak(
     text="MessageSent(bytes32,address,bytes3,bytes32,bytes32[])"
@@ -32,14 +46,18 @@ class EVMWatcher:
     portal_address: str
     tasks: list
 
-    def __init__(self, network: Network, parse_message_func: any):
+    def __init__(self, network: Network, parse_message_func: any, routes):
         self.parse_message_func = parse_message_func
+        self.routes = routes
         self.network_id = network.id
         self.rpc_url = network.rpc_url
         self.min_height = network.min_height
         self.max_block_range = network.max_block_range or 1000
         self.portal_address = Web3.to_checksum_address(network.portal_address)
         self.tasks = []
+        # Held across sent catch-up and live MessageSent handling so the retry
+        # timer and a websocket log cannot move next_nonce at the same time.
+        self.sent_index_lock = asyncio.Lock()
         self.next_nonce = 1
         self.sent_scan_height = network.min_height
         self.received_scan_height = network.min_height
@@ -224,12 +242,13 @@ class EVMWatcher:
 
         token_symbol = parsed["token_symbol"]
         amount = parsed["amount_mojo"]
-        increment_key_value(db, f"{token_symbol}_total_volume", -amount)
+        increment_key_value(db, f"{token_symbol}_total_volume", -amount, commit=False)
 
         if msg_type == "erc20_bridge":
-            increment_key_value(db, f"{token_symbol}_locked", -amount)
+            increment_key_value(db, f"{token_symbol}_locked", -amount, commit=False)
         else:
-            increment_key_value(db, f"{token_symbol}_locked", amount)
+            increment_key_value(db, f"{token_symbol}_locked", amount, commit=False)
+        db.commit()
 
     async def handleSentReorg(self, w3, db, raw_log: dict) -> None:
         nonce = self.log_nonce(raw_log)
@@ -332,16 +351,34 @@ class EVMWatcher:
         )
 
     def loadStateFromDb(self, db):
-        latest_sent: Message | None = db.query(Message).filter(
-            Message.source_chain == self.network_id.encode()
-        ).order_by(Message.nonce.desc()).first()
+        chain = self.network_id.encode()
+        # A crash between the insert and the volume commit leaves parsed empty.
+        # fetchSentEvent only returns logs at or after sent_scan_height, so
+        # resume on that nonce and start on or before its block.
+        unparsed: Message | None = db.query(Message).filter(and_(
+            Message.source_chain == chain,
+            or_(
+                Message.parsed.is_(None),
+                Message.parsed == "",
+                Message.parsed == "{}",
+            ),
+        )).order_by(Message.nonce.asc()).first()
 
-        if latest_sent is None:
-            self.next_nonce = 1
-            self.sent_scan_height = self.min_height
+        if unparsed is not None:
+            block_number = unparsed.source_block_number
+            self.next_nonce = int(unparsed.nonce.hex(), 16)
+            self.sent_scan_height = min(block_number, self.advance_cursor(block_number))
         else:
-            self.next_nonce = int(latest_sent.nonce.hex(), 16) + 1
-            self.sent_scan_height = self.advance_cursor(latest_sent.source_block_number)
+            latest_sent: Message | None = db.query(Message).filter(
+                Message.source_chain == chain
+            ).order_by(Message.nonce.desc()).first()
+
+            if latest_sent is None:
+                self.next_nonce = 1
+                self.sent_scan_height = self.min_height
+            else:
+                self.next_nonce = int(latest_sent.nonce.hex(), 16) + 1
+                self.sent_scan_height = self.advance_cursor(latest_sent.source_block_number)
 
         latest_received: Message | None = db.query(Message).filter(and_(
             Message.destination_chain == self.network_id.encode(),
@@ -393,16 +430,72 @@ class EVMWatcher:
             query_start_height = query_end_height + 1
             query_end_height = query_start_height + self.max_block_range - 1
 
-    async def processSentEvent(self, w3, db, event) -> None:
-        nonce_int = int(event.args.nonce.hex(), 16)
+    def _policy_bytes(self, value) -> bytes:
+        return self.log_bytes(value)
+
+    def _tx_hash(self, value) -> str:
+        tx_hash = self.log_bytes(value).hex()
+        if not tx_hash.startswith("0x"):
+            tx_hash = "0x" + tx_hash
+        return tx_hash
+
+    def _parse_and_commit(self, db, message):
+        try:
+            self.parse_message_func(db, message)
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+
+    async def processSentEvent(self, w3, db, event) -> str:
+        """accept inserts. reject does not. retry and hold do not, and must not advance the cursor."""
+        nonce = event.args.nonce if isinstance(event.args.nonce, (bytes, bytearray)) else bytes(event.args.nonce)
         source = event.args.source
         if hasattr(source, "hex"):
             source = source if isinstance(source, bytes) else bytes.fromhex(source.hex())
         else:
             source = bytes.fromhex(str(source).replace("0x", ""))
+        nonce_int = int(nonce.hex(), 16)
+
+        existing_message = db.query(Message).filter(and_(
+            Message.nonce == nonce,
+            Message.source_chain == self.network_id.encode(),
+        )).first()
+        if existing_message is not None:
+            if is_message_parsed(existing_message.parsed):
+                self.log(f"Message {self.network_id}-{nonce_int} already exists in the database")
+                return "accept"
+            self.log(f"Parsing stored message {self.network_id}-{nonce_int}")
+            self._parse_and_commit(db, existing_message)
+            return "accept"
+
+        contents = [self._policy_bytes(word) for word in event.args.contents]
+        result = await evaluate_evm_message_policy(
+            web3=w3,
+            routes=self.routes,
+            source_chain=self.network_id.encode(),
+            source=source,
+            destination=self._policy_bytes(event.args.destination),
+            destination_chain=self._policy_bytes(event.args.destination_chain),
+            contents=contents,
+            block_number=int(event.blockNumber),
+            tx_hash=self._tx_hash(event.transactionHash),
+        )
+        if result.kind in ("retry", "hold"):
+            self.log(
+                f"Policy {result.kind} for {self.network_id}-{nonce_int} ({result.reason}); not indexing"
+            )
+            return result.kind
+        if result.kind != "accept":
+            self.log(
+                f"Policy {result.kind} for {self.network_id}-{nonce_int} ({result.reason}); not indexing"
+            )
+            if result.kind == "reject":
+                record_policy_reject(db, self.network_id.encode(), nonce)
+            return "reject"
 
         new_message = Message(
-            nonce=event.args.nonce if isinstance(event.args.nonce, bytes) else bytes(event.args.nonce),
+            nonce=nonce,
             source_chain=self.network_id.encode(),
             source=source,
             destination_chain=event.args.destination_chain,
@@ -418,17 +511,24 @@ class EVMWatcher:
         )
 
         self.log(f"Found new sent message {self.network_id}-{nonce_int} at block {event.blockNumber}")
-        existing_message = db.query(Message).filter(and_(
-            Message.nonce == new_message.nonce,
-            Message.source_chain == new_message.source_chain,
-        )).first()
-        if existing_message is None:
-            self.log(f"Adding message {self.network_id}-{nonce_int} to the database...")
-            new_message = self.parse_message_func(db, new_message)
-            db.add(new_message)
-            db.commit()
-        else:
-            self.log(f"Message {self.network_id}-{nonce_int} already exists in the database")
+        self.log(f"Adding message {self.network_id}-{nonce_int} to the database...")
+        db.add(new_message)
+        db.commit()
+        self._parse_and_commit(db, new_message)
+        return "accept"
+
+    async def indexSentEvent(self, w3, db, event) -> bool:
+        """True when next_nonce advanced.
+
+        reject advances so one bad message cannot stall the chain.
+        retry and hold leave next_nonce where it is.
+        """
+        kind = await self.processSentEvent(w3, db, event)
+        if kind in ("retry", "hold"):
+            return False
+        self.next_nonce += 1
+        self.sent_scan_height = self.advance_cursor(event.blockNumber)
+        return True
 
     async def catchUpSentMessages(self, w3, db, portal) -> None:
         while True:
@@ -440,11 +540,13 @@ class EVMWatcher:
                 self.log(f"Sent message catch-up complete; waiting for nonce {self.next_nonce}")
                 return
 
-            await self.processSentEvent(w3, db, event)
-            self.next_nonce += 1
-            self.sent_scan_height = self.advance_cursor(event.blockNumber)
+            if not await self.indexSentEvent(w3, db, event):
+                self.log(
+                    f"Sent message catch-up paused; retrying nonce {self.next_nonce} on the next pass"
+                )
+                return
 
-    async def waitForSentMessage(self, db, message_nonce, source_chain: bytes) -> Message:
+    async def waitForSentMessage(self, db, message_nonce, source_chain: bytes) -> Message | None:
         logged_wait = False
         while True:
             msg = db.query(Message).filter(and_(
@@ -454,6 +556,8 @@ class EVMWatcher:
             )).first()
             if msg is not None:
                 return msg
+            if find_policy_reject(db, source_chain, message_nonce) is not None:
+                return None
             if not logged_wait:
                 self.log(
                     f"Message {source_chain.decode()}-{message_nonce.hex()} "
@@ -471,6 +575,12 @@ class EVMWatcher:
         )
 
         msg = await self.waitForSentMessage(db, message_nonce, event.args.source_chain)
+        if msg is None:
+            self.log(
+                f"Message {event.args.source_chain.decode()}-{message_nonce.hex()} "
+                f"was rejected; skipping"
+            )
+            return
 
         if msg.status == MessageStatus.RECEIVED:
             event_tx_hash = bytes(event.transactionHash)
@@ -547,6 +657,15 @@ class EVMWatcher:
         return topic.hex() if hasattr(topic, "hex") else str(topic)
 
     async def handleSentLog(self, w3, db, portal, raw_log: dict) -> None:
+        async with self.sent_index_lock:
+            try:
+                await self._handleSentLog(w3, db, portal, raw_log)
+            except Exception:
+                self.safe_db_rollback(db)
+                self.loadStateFromDb(db)
+                raise
+
+    async def _handleSentLog(self, w3, db, portal, raw_log: dict) -> None:
         if raw_log.get("removed"):
             await self.handleSentReorg(w3, db, raw_log)
             await self.catchUpSentMessages(w3, db, portal)
@@ -569,12 +688,13 @@ class EVMWatcher:
             )
             await self.catchUpSentMessages(w3, db, portal)
 
-        if nonce_int < self.next_nonce:
+        # Catch-up can stop on an earlier retry or hold and leave next_nonce behind.
+        # Index this log only when it is still that nonce; otherwise a later nonce
+        # would be stored and the cursor would jump the message that must stay put.
+        if nonce_int != self.next_nonce:
             return
 
-        await self.processSentEvent(w3, db, event)
-        self.next_nonce += 1
-        self.sent_scan_height = self.advance_cursor(event.blockNumber)
+        await self.indexSentEvent(w3, db, event)
 
     async def handleReceivedLog(self, w3, db, portal, raw_log: dict) -> None:
         if raw_log.get("removed"):
@@ -610,6 +730,17 @@ class EVMWatcher:
         except asyncio.CancelledError:
             raise
 
+    async def sentCatchUpRetryLoop(self, w3, db, portal) -> None:
+        while True:
+            await asyncio.sleep(SENT_CATCHUP_RETRY_SECONDS)
+            async with self.sent_index_lock:
+                try:
+                    await self.catchUpSentMessages(w3, db, portal)
+                except Exception as e:
+                    self.safe_db_rollback(db)
+                    self.log(f"Sent catch-up retry failed: {self.format_error(e)}")
+                    self.loadStateFromDb(db)
+
     async def runSubscriptionSession(self) -> None:
         http_w3 = AsyncWeb3(self.getHttpProvider())
         provider = WebsocketProviderV2(
@@ -628,10 +759,14 @@ class EVMWatcher:
                 received_task = asyncio.create_task(
                     self.receivedLogProcessor(http_w3, portal, received_queue)
                 )
+                sent_retry_task = asyncio.create_task(
+                    self.sentCatchUpRetryLoop(http_w3, db, portal)
+                )
 
                 try:
-                    await self.catchUpSentMessages(http_w3, db, portal)
-                    await self.catchUpReceivedMessages(http_w3, db, portal)
+                    async with self.sent_index_lock:
+                        await self.catchUpSentMessages(http_w3, db, portal)
+                        await self.catchUpReceivedMessages(http_w3, db, portal)
 
                     sent_filter = {
                         "address": self.portal_address,
@@ -651,8 +786,9 @@ class EVMWatcher:
 
                     # eth_subscribe only delivers logs from this point forward; rescan the
                     # tip to close the gap between catch-up and subscription activation.
-                    await self.catchUpSentMessages(http_w3, db, portal)
-                    await self.catchUpReceivedMessages(http_w3, db, portal)
+                    async with self.sent_index_lock:
+                        await self.catchUpSentMessages(http_w3, db, portal)
+                        await self.catchUpReceivedMessages(http_w3, db, portal)
 
                     async for message in ws_w3.ws.process_subscriptions():
                         result = message.get("result")
@@ -666,17 +802,17 @@ class EVMWatcher:
                             try:
                                 await self.handleSentLog(http_w3, db, portal, result)
                             except Exception as e:
-                                self.safe_db_rollback(db)
                                 self.log(f"Error processing sent log: {self.format_error(e)}")
-                                self.loadStateFromDb(db)
                         elif topic0 == MESSAGE_RECEIVED_TOPIC:
                             await received_queue.put(result)
                 finally:
+                    sent_retry_task.cancel()
                     received_task.cancel()
-                    try:
-                        await received_task
-                    except asyncio.CancelledError:
-                        pass
+                    for task in (sent_retry_task, received_task):
+                        try:
+                            await task
+                        except asyncio.CancelledError:
+                            pass
             finally:
                 db.close()
 

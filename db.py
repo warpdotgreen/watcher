@@ -63,6 +63,12 @@ class KeyValueEntry(Base):
     key = Column(String, primary_key=True)
     value_int = Column(Integer, default=0)
 
+class PolicyReject(Base):
+    """A source nonce the spend policy rejected. Not a message, and not parsed."""
+    __tablename__ = 'policy_rejects'
+    source_chain = Column(BLOB(3), primary_key=True)
+    nonce = Column(BLOB, primary_key=True)
+
 def setup_database(db_path='sqlite:///data.db'):
     engine = create_engine(db_path, echo=False)
     Base.metadata.create_all(engine)
@@ -72,16 +78,36 @@ def setup_database(db_path='sqlite:///data.db'):
 # Call setup_database() to initialize database
 # session = setup_database()
 
-def increment_key_value(db, key, amount):
+def is_message_parsed(parsed) -> bool:
+    return parsed is not None and parsed != "" and parsed != "{}"
+
+
+def find_policy_reject(db, source_chain: bytes, nonce: bytes):
+    return db.query(PolicyReject).filter(
+        PolicyReject.source_chain == source_chain,
+        PolicyReject.nonce == nonce,
+    ).first()
+
+
+def record_policy_reject(db, source_chain: bytes, nonce: bytes) -> None:
+    if find_policy_reject(db, source_chain, nonce) is not None:
+        return
+    db.add(PolicyReject(source_chain=source_chain, nonce=nonce))
+    db.commit()
+
+
+def increment_key_value(db, key, amount, commit=True):
     existing = db.execute(select(KeyValueEntry).where(KeyValueEntry.key == key)).scalar()
-    
+
     if not existing:
         db.execute(insert(KeyValueEntry).values(key=key, value_int=0))
-        db.commit()
+        if commit:
+            db.commit()
 
     db.execute(
         update(KeyValueEntry).
         where(KeyValueEntry.key == key).
         values(value_int=KeyValueEntry.value_int + amount)
     )
-    db.commit()
+    if commit:
+        db.commit()

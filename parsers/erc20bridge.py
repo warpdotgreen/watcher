@@ -2,7 +2,7 @@ from db import Message, split_message_contents, increment_key_value
 from chia.util.bech32m import encode_puzzle_hash
 from parsers.parser import Parser, Token
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 import json
 import web3
 
@@ -12,6 +12,7 @@ class ERC20BridgeConfig:
     chains: List[str]
     contract: str
     tokens: List[Token]
+    millieth: Optional[str] = None
 
     @staticmethod
     def from_dict(data: dict) -> 'ERC20BridgeConfig':
@@ -19,7 +20,8 @@ class ERC20BridgeConfig:
             type='erc20bridge',
             chains=data['chains'],
             contract=data['contract'],
-            tokens=[Token.from_dict(token) for token in data['tokens']]
+            tokens=[Token.from_dict(token) for token in data['tokens']],
+            millieth=data.get('millieth') or data.get('millieth_address') or data.get('millieth_contract'),
         )
      
 
@@ -60,8 +62,8 @@ class ERC20BridgeParser(Parser):
         if token is None:
             return message
 
-        increment_key_value(db, f"{token.symbol}_total_volume", amount)
-        increment_key_value(db, f"{token.symbol}_locked", amount if from_evm else -amount)
+        increment_key_value(db, f"{token.symbol}_total_volume", amount, commit=False)
+        increment_key_value(db, f"{token.symbol}_locked", amount if from_evm else -amount, commit=False)
         message.parsed = json.dumps({
             'type': 'erc20_bridge',
             'contract': token.contract,

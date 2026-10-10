@@ -17,6 +17,7 @@ pip install sqlalchemy==2.0.29
 pip install web3==6.17.2
 pip install fastapi==0.110.2
 pip install hypercorn==0.16.0
+pip install nostr-sdk==0.32.1
 ```
 
 Create config:

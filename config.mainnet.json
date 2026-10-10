@@ -13,14 +13,16 @@
       "type": "evm",
       "min_height": 19917838,
       "max_block_range": 10000,
-      "portal_address": "0x2593C582B7a24d94Ba0056B493Fd4048bd99fc3F"
+      "portal_address": "0x2593C582B7a24d94Ba0056B493Fd4048bd99fc3F",
+      "portal_impl_codehash": "0x8e4988c3a6ceeba58eda24489c270a91c0ea1e48b6def658409ad837cdf3c34c"
     },
     {
       "id": "bse",
       "type": "evm",
       "min_height": 14748575,
       "max_block_range": 1000,
-      "portal_address": "0x382bd36d1dE6Fe0a3D9943004D3ca5Ee389627EE" 
+      "portal_address": "0x382bd36d1dE6Fe0a3D9943004D3ca5Ee389627EE",
+      "portal_impl_codehash": "0x8e4988c3a6ceeba58eda24489c270a91c0ea1e48b6def658409ad837cdf3c34c"
     }
   ],
   "parsers": [

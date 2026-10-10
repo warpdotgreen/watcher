@@ -27,6 +27,9 @@ class Network:
     # EVM
     max_block_range: Optional[int] = None
     portal_address: Optional[str] = None
+    # keccak256 of the portal proxy's implementation runtime bytecode.
+    # Operators must set this. A mismatch makes the spend policy hold the message.
+    portal_impl_codehash: Optional[str] = None
 
 
 @dataclass
@@ -74,7 +77,8 @@ class Config:
                 portal_launcher_id=net.get('portal_launcher_id'),
                 bridging_puzzle_hash=net.get('bridging_puzzle_hash'),
                 max_block_range=net.get('max_block_range'),
-                portal_address=net.get('portal_address')
+                portal_address=net.get('portal_address'),
+                portal_impl_codehash=net.get('portal_impl_codehash'),
             )
             config.networks.append(network)
         return config

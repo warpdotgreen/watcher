@@ -49,8 +49,8 @@ class CATBridgeParser(Parser):
         else:
             receiver = web3.Web3.to_checksum_address('0x' + receiver[-40:])
 
-        increment_key_value(db, f"{token.symbol}_total_volume", amount)
-        increment_key_value(db, f"{token.symbol}_locked", -amount if from_evm else amount)
+        increment_key_value(db, f"{token.symbol}_total_volume", amount, commit=False)
+        increment_key_value(db, f"{token.symbol}_locked", -amount if from_evm else amount, commit=False)
         message.parsed = json.dumps({
             'type': 'cat_bridge',
             'contract': token.contract,
