@@ -9,6 +9,7 @@ from web3 import AsyncWeb3
 from web3.providers import AsyncHTTPProvider
 from sqlalchemy import and_, func, or_
 from watchers.cli_policy import evaluate_chia_message_policy, load_block_spends
+from commands.policy_runtime import is_rpc_rate_limited
 from chia.types.coin_record import CoinRecord
 from chia.types.blockchain_format.coin import Coin
 from chia.consensus.block_record import BlockRecord
@@ -75,6 +76,8 @@ class ChiaWatcher:
         self.evm_rpc_urls = evm_rpc_urls or {}
         self._evm_web3 = {}
         self.skipped_coin_ids = set()
+        self._rate_limit_step = 0
+        self._policy_retry_reason = ""
         self.tasks = []
         self.nodes = []
 
@@ -107,6 +110,21 @@ class ChiaWatcher:
             skip_coin_ids.append(nonce)
         if first:
             self.log(f"Skipping nonce {nonce.hex()} because toll is not high enough")
+
+    _RATE_LIMIT_DELAYS = (5, 10, 15, 20, 30, 45, 60, 120, 180, 240, 300)
+
+    def retry_delay_seconds(self, reason: str) -> int:
+        """Seconds to wait before the sent scan tries a retry coin again.
+
+        A rate limit walks 5s, 10s, 15s, 20s, 30s, 45s, 1m, 2m, 3m, 4m, then
+        stays at 5m. Any other retry starts that ladder over.
+        """
+        if "rate limited" in (reason or ""):
+            delay = self._RATE_LIMIT_DELAYS[min(self._rate_limit_step, len(self._RATE_LIMIT_DELAYS) - 1)]
+            self._rate_limit_step += 1
+            return delay
+        self._rate_limit_step = 0
+        return 30
 
     def note_coin_outcome(self, nonce: bytes, kind: str, skip_coin_ids: list) -> bool:
         """True when this coin must be left for the next pass.
@@ -261,12 +279,20 @@ class ChiaWatcher:
                                 evm_block_number=None,
                             )
                         except Exception as exc:
-                            self.log(
-                                f"Coin {self.network_id}-{coin.name().hex()}: policy error ({exc}); will retry"
-                            )
+                            if is_rpc_rate_limited(exc):
+                                self._policy_retry_reason = "rpc rate limited"
+                                self.log(
+                                    f"Coin {self.network_id}-{coin.name().hex()}: policy retry (rpc rate limited)"
+                                )
+                            else:
+                                self._policy_retry_reason = ""
+                                self.log(
+                                    f"Coin {self.network_id}-{coin.name().hex()}: policy error ({type(exc).__name__}); will retry"
+                                )
                             return "retry"
 
                         if result.kind in ("retry", "hold"):
+                            self._policy_retry_reason = result.reason or ""
                             self.log(
                                 f"Coin {self.network_id}-{coin.name().hex()}: policy {result.kind} ({result.reason})"
                             )
@@ -417,8 +443,9 @@ class ChiaWatcher:
                         break
 
                 if retry_later:
-                    self.log("Policy asked to retry a coin; checking again in 30s...")
-                    await asyncio.sleep(30)
+                    delay = self.retry_delay_seconds(self._policy_retry_reason)
+                    self.log(f"Policy asked to retry a coin; checking again in {delay}s...")
+                    await asyncio.sleep(delay)
                     continue
 
                 if not reorg:
