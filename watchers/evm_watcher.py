@@ -390,6 +390,7 @@ class EVMWatcher:
             if latest_received is not None
             else self.min_height
         )
+        db.rollback()
 
     async def fetchSentEvent(
         self, w3, portal, nonce: int, start_height: int
@@ -464,11 +465,15 @@ class EVMWatcher:
         if existing_message is not None:
             if is_message_parsed(existing_message.parsed):
                 self.log(f"Message {self.network_id}-{nonce_int} already exists in the database")
+                db.rollback()
                 return "accept"
             self.log(f"Parsing stored message {self.network_id}-{nonce_int}")
             self._parse_and_commit(db, existing_message)
             return "accept"
 
+        # Policy reads are HTTP calls. Do not hold the read transaction open
+        # across them; the XCH portal is waiting on this same database file.
+        db.rollback()
         contents = [self._policy_bytes(word) for word in event.args.contents]
         result = await evaluate_evm_message_policy(
             web3=w3,
@@ -556,6 +561,9 @@ class EVMWatcher:
             )).first()
             if msg is not None:
                 return msg
+            # Drop the read snapshot before sleeping so a commit from the
+            # source-chain watcher is visible on the next pass.
+            db.rollback()
             if find_policy_reject(db, source_chain, message_nonce) is not None:
                 return None
             if not logged_wait:
@@ -741,20 +749,37 @@ class EVMWatcher:
                     self.log(f"Sent catch-up retry failed: {self.format_error(e)}")
                     self.loadStateFromDb(db)
 
+    async def websocketKeepalive(self, ws_w3) -> None:
+        """Public websocket servers close a socket that only sits idle.
+
+        Catch-up and policy checks use HTTP, so the subscription socket would
+        otherwise go quiet and get dropped mid-scan.
+        """
+        while True:
+            await asyncio.sleep(20)
+            await ws_w3.eth.block_number
+
     async def runSubscriptionSession(self) -> None:
         http_w3 = AsyncWeb3(self.getHttpProvider())
-        provider = WebsocketProviderV2(
-            self.getWebsocketUrl(),
-            request_timeout=RPC_REQUEST_TIMEOUT,
-        )
-        self.log("Connecting to WebSocket...")
+        db = self.getDb()
+        try:
+            self.loadStateFromDb(db)
+            portal = http_w3.eth.contract(address=self.portal_address, abi=PORTAL_EVENTS_ABI)
 
-        async with AsyncWeb3.persistent_websocket(provider) as ws_w3:
-            db = self.getDb()
-            try:
-                self.loadStateFromDb(db)
+            # Historical catch-up does not use the websocket. Doing it inside
+            # the socket session made an idle timeout cancel the scan and
+            # start it over at the same nonce.
+            async with self.sent_index_lock:
+                await self.catchUpSentMessages(http_w3, db, portal)
+                await self.catchUpReceivedMessages(http_w3, db, portal)
 
-                portal = http_w3.eth.contract(address=self.portal_address, abi=PORTAL_EVENTS_ABI)
+            provider = WebsocketProviderV2(
+                self.getWebsocketUrl(),
+                request_timeout=RPC_REQUEST_TIMEOUT,
+            )
+            self.log("Connecting to WebSocket...")
+
+            async with AsyncWeb3.persistent_websocket(provider) as ws_w3:
                 received_queue: asyncio.Queue = asyncio.Queue()
                 received_task = asyncio.create_task(
                     self.receivedLogProcessor(http_w3, portal, received_queue)
@@ -762,12 +787,9 @@ class EVMWatcher:
                 sent_retry_task = asyncio.create_task(
                     self.sentCatchUpRetryLoop(http_w3, db, portal)
                 )
+                keepalive_task = asyncio.create_task(self.websocketKeepalive(ws_w3))
 
                 try:
-                    async with self.sent_index_lock:
-                        await self.catchUpSentMessages(http_w3, db, portal)
-                        await self.catchUpReceivedMessages(http_w3, db, portal)
-
                     sent_filter = {
                         "address": self.portal_address,
                         "topics": [MESSAGE_SENT_TOPIC],
@@ -808,13 +830,14 @@ class EVMWatcher:
                 finally:
                     sent_retry_task.cancel()
                     received_task.cancel()
-                    for task in (sent_retry_task, received_task):
+                    keepalive_task.cancel()
+                    for task in (sent_retry_task, received_task, keepalive_task):
                         try:
                             await task
                         except asyncio.CancelledError:
                             pass
-            finally:
-                db.close()
+        finally:
+            db.close()
 
     async def logSubscriptionWatcher(self):
         while True:

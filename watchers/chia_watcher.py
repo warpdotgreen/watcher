@@ -95,6 +95,19 @@ class ChiaWatcher:
             self._evm_web3[key] = client
         return client
 
+    def remember_low_toll(self, nonce: bytes, skip_coin_ids: list) -> None:
+        """A sub-toll bridging coin is not a message. Remember it for this process.
+
+        The sent scan restarts from the last indexed height, so these coins stay
+        in the puzzle-hash results. Without this set, every pass logs them again.
+        """
+        first = nonce not in self.skipped_coin_ids
+        self.skipped_coin_ids.add(nonce)
+        if nonce not in skip_coin_ids:
+            skip_coin_ids.append(nonce)
+        if first:
+            self.log(f"Skipping nonce {nonce.hex()} because toll is not high enough")
+
     def note_coin_outcome(self, nonce: bytes, kind: str, skip_coin_ids: list) -> bool:
         """True when this coin must be left for the next pass.
 
@@ -331,6 +344,9 @@ class ChiaWatcher:
         while True:
             try:
                 last_synced_height = self._sent_scan_start(db)
+                # The height read opens a transaction. Release it before the
+                # node call so that read does not sit open across the RPC.
+                db.rollback()
 
                 unfiltered_coin_records = await node.get_coin_records_by_puzzle_hash(
                     self.bridging_puzzle_hash,
@@ -357,8 +373,7 @@ class ChiaWatcher:
                             continue
 
                         if coin_record.coin.amount < self.message_toll:
-                            self.log(f"Skipping nonce {nonce.hex()} because toll is not high enough")
-                            skip_coin_ids.append(nonce)
+                            self.remember_low_toll(nonce, skip_coin_ids)
                             continue
 
                         message_in_db = db.query(Message).filter(and_(
@@ -484,25 +499,26 @@ class ChiaWatcher:
                 Message.nonce == nonce,
                 Message.destination_chain == self.network_id.encode()
             )).first()
-            cnt = 0
+            announced_wait = False
             while msg is None:
+                # End the read transaction before sleeping. The other chain's
+                # watcher commits this row on its own connection; the next
+                # query has to start a new transaction to see that commit.
+                db.rollback()
                 if find_policy_reject(db, source_chain, nonce) is not None:
                     self.log(
                         f"Message {source_chain.decode()}-{nonce.hex()} was rejected; skipping"
                     )
                     break
-                self.log(f"Message {source_chain.decode()}-{nonce.hex()} not found in db; waiting 10s for other threads to catch up")
+                if not announced_wait:
+                    self.log(f"Message {source_chain.decode()}-{nonce.hex()} not found in db; waiting 10s for other threads to catch up")
+                    announced_wait = True
                 await asyncio.sleep(10)
                 msg = db.query(Message).filter(and_(
                     Message.source_chain == source_chain,
                     Message.nonce == nonce,
                     Message.destination_chain == self.network_id.encode()
                 )).first()
-
-                cnt += 1
-                # if cnt >= 60:
-                #     self.log("Something's not right with this message - exiting...")
-                #     sys.exit(1)
 
             if msg is None:
                 continue

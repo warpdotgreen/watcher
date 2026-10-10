@@ -1205,6 +1205,122 @@ class RejectMarkerTests(unittest.TestCase):
             os.remove(path)
             os.remove(chia_path)
 
+    def test_low_toll_coin_is_not_logged_on_the_next_pass(self):
+        chia, _db, path, _node, _coin_record, _bridging = _open_chia()
+        try:
+            nonce = bytes32(b"\x44" * 32)
+            first_pass = []
+            chia.remember_low_toll(nonce, first_pass)
+            self.assertEqual(first_pass, [nonce])
+            self.assertIn(nonce, chia.skipped_coin_ids)
+
+            second_pass = list(chia.skipped_coin_ids)
+            self.assertIn(nonce, second_pass)
+            chia.remember_low_toll(nonce, second_pass)
+            self.assertEqual(second_pass.count(nonce), 1)
+        finally:
+            _db.close()
+            os.remove(path)
+
+    def test_portal_wait_sees_row_committed_by_the_other_watcher(self):
+        asyncio.run(self._portal_wait_sees_row_committed_by_the_other_watcher())
+
+    async def _portal_wait_sees_row_committed_by_the_other_watcher(self):
+        chia, db, path, _node, _coin_record, _bridging = _open_chia()
+        other = setup_database("sqlite:///" + path)
+        try:
+            nonce = b"\x21" * 32
+            portal_coin = Coin(bytes32(b"\x10" * 32), bytes32(b"\x11" * 32), 1)
+            new_ph = bytes32(b"\x12" * 32)
+            spend = _portal_spend(portal_coin, new_ph, [(b"bse", nonce)])
+            coin_record = SimpleNamespace(
+                coin=portal_coin,
+                spent_block_index=50,
+                timestamp=9,
+            )
+            db.add(ChiaPortalState(
+                chain_id=b"xch",
+                coin_id=portal_coin.name(),
+                parent_id=portal_coin.parent_coin_info,
+                height=40,
+            ))
+            db.commit()
+
+            class Node:
+                async def get_coin_record_by_name(self, name):
+                    if name == portal_coin.name():
+                        return coin_record
+                    return None
+
+                async def get_puzzle_and_solution(self, name, height):
+                    return spend
+
+                async def get_block_record_by_height(self, height):
+                    return SimpleNamespace(timestamp=77)
+
+            inserted = False
+
+            async def sleep(seconds):
+                nonlocal inserted
+                self.assertEqual(seconds, 10)
+                if inserted:
+                    raise AssertionError("portal is still waiting after bse-4 was committed")
+                other.add(_sent_message(nonce, b"bse", b"xch"))
+                other.commit()
+                inserted = True
+
+            with patch("watchers.chia_watcher.asyncio.sleep", sleep):
+                synced = await asyncio.wait_for(
+                    chia.syncPortal(db, Node(), db.query(ChiaPortalState).one()),
+                    timeout=2,
+                )
+
+            stored = db.query(Message).filter(Message.nonce == nonce).one()
+            self.assertEqual(stored.status, MessageStatus.RECEIVED)
+            self.assertEqual(stored.destination_block_number, 50)
+            self.assertEqual(synced.height, 50)
+        finally:
+            other.close()
+            db.close()
+            os.remove(path)
+
+    def test_sent_catchup_runs_before_the_websocket(self):
+        asyncio.run(self._sent_catchup_runs_before_the_websocket())
+
+    async def _sent_catchup_runs_before_the_websocket(self):
+        watcher = _evm_watcher()
+        db, path = _temp_db()
+        order = []
+        try:
+            watcher.getDb = lambda: db
+
+            async def catch_sent(*_args, **_kwargs):
+                order.append("sent")
+
+            async def catch_received(*_args, **_kwargs):
+                order.append("received")
+
+            watcher.catchUpSentMessages = catch_sent
+            watcher.catchUpReceivedMessages = catch_received
+
+            class WS:
+                async def __aenter__(self):
+                    order.append("ws")
+                    raise asyncio.CancelledError()
+
+                async def __aexit__(self, *_args):
+                    return False
+
+            with patch("watchers.evm_watcher.AsyncWeb3") as web3_cls:
+                web3_cls.return_value.eth.contract.return_value = object()
+                web3_cls.persistent_websocket.return_value = WS()
+                with self.assertRaises(asyncio.CancelledError):
+                    await watcher.runSubscriptionSession()
+            self.assertEqual(order, ["sent", "received", "ws"])
+        finally:
+            db.close()
+            os.remove(path)
+
 
 if __name__ == "__main__":
     unittest.main()
