@@ -419,6 +419,11 @@
           "symbol": "Wizard | $BITCOIN",
           "contract": "0x801003CccD1A4C6079c71D18C7Dbe8375589B2ed",
           "asset_id": "46ec3dc25b32221e88fad0ee20f84f7dfff13dbee844497232cb08c8df532b15"
+        },
+        {
+          "symbol": "STR8",
+          "contract": "0x80EA00af91bbfae4006Fd48321C5635Cf47ec72a",
+          "asset_id": "d43cbae944800abd0c1bea28137efe77338ef0d5863cbf7c8345a2369a4cade7"
         }
       ]
     }
